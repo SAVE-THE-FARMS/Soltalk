@@ -1,0 +1,13 @@
+[project]
+name = "soltalk-backend"
+version = "0.1.0"
+description = "SolTalk 백엔드 — 자연어 → 의도파악(OpenAI) → Mock IoT 제어/조회 → 자연어 응답"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "openai",
+    "python-dotenv",
+]
+
+# 실행: backend/ 에서  ->  uv run python app/server.py
