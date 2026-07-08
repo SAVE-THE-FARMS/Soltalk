@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]",
     "openai",
     "python-dotenv",
+    "python-multipart",
 ]
 
 [dependency-groups]
