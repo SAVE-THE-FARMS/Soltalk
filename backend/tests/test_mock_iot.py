@@ -33,3 +33,34 @@ def test_control_invalid_action_keeps_state_and_returns_error():
 
     assert result == {"ok": False, "device": "irrigation", "state": "off", "reason": "invalid_action"}
     assert iot.state["irrigation"] == "off"
+
+
+def test_read_known_target_returns_value():
+    iot = MockIoTAdapter()
+
+    result = iot.read("temperature")
+
+    assert result == {"ok": True, "target": "temperature", "value": 24.5, "unit": "℃"}
+
+
+def test_read_unknown_target_returns_error():
+    iot = MockIoTAdapter()
+
+    result = iot.read("wind_speed")
+
+    assert result == {"ok": False, "target": "wind_speed", "reason": "unknown_target"}
+
+
+def test_custom_initial_state_is_used():
+    iot = MockIoTAdapter(initial_state={"shade": "closed", "window": "open", "irrigation": "off"})
+
+    assert iot.state == {"shade": "closed", "window": "open", "irrigation": "off"}
+
+
+def test_reset_restores_initial_state():
+    iot = MockIoTAdapter(initial_state={"shade": "closed", "window": "open", "irrigation": "off"})
+    iot.control("shade", "open")
+
+    iot.reset()
+
+    assert iot.state == {"shade": "closed", "window": "open", "irrigation": "off"}

@@ -48,7 +48,7 @@ cd backend
 # 리드가 준 .env 를 env/ 폴더에 두기 (없으면 예시 복사)
 #   cp env/.env.example env/.env
 uv sync                       # 패키지 설치
-uv run python app/server.py   # 서버 실행
+uv run python -m app.server   # 서버 실행
 ```
 - [ ] 브라우저에서 http://localhost:8000/docs 열림 → 성공
 - [ ] `/health` 눌러 `{"status":"ok"}` 확인

@@ -18,4 +18,4 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
-# 실행: backend/ 에서  ->  uv run python app/server.py
+# 실행: backend/ 에서  ->  uv run python -m app.server
