@@ -1,0 +1,133 @@
+{
+  "info": {
+    "_postman_id": "soltalk-0000-0000-0000-000000000001",
+    "name": "SolTalk API",
+    "description": "SolTalk 백엔드 API. baseUrl 변수(기본 http://localhost:8000)를 쓰세요.\n\n실행: backend/ 에서 `uv run python app/server.py`\n엔드포인트 목록은 http://localhost:8000/docs 에서도 확인 가능.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "greenhouseId", "value": "2" },
+    { "key": "alertId", "value": "gh2-humidity" }
+  ],
+  "item": [
+    {
+      "name": "Health (서버 상태)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+        "description": "서버가 살아있는지 확인. 200 {\"status\":\"ok\"}"
+      }
+    },
+    {
+      "name": "Chat - 제어 (차광막 닫아줘)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"차광막 닫아줘\",\n  \"session_id\": \"demo\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] },
+        "description": "자연어 명령/질문. session_id 는 생략 가능(생략 시 default 세션).\n\n응답: { reply, actions_taken[], updated_state }\n\n다른 예시 message:\n- \"창문 열어\"\n- \"관수 틀어줘\"\n- \"지금 온도 몇 도야?\"\n- \"오늘 생산량 알려줘\"\n- \"창문 열고 온도도 알려줘\" (복합)"
+      }
+    },
+    {
+      "name": "Chat - 조회 (지금 온도 몇 도야?)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"지금 온도랑 습도 알려줘\",\n  \"session_id\": \"demo\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] },
+        "description": "조회 명령 예시. actions_taken 은 비어있고 reply 로 값 안내."
+      }
+    },
+    {
+      "name": "Transcribe (음성 → 텍스트)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "audio", "type": "file", "src": [], "description": "녹음 파일 (webm/mp3/wav/m4a 등)" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/transcribe", "host": ["{{baseUrl}}"], "path": ["api", "transcribe"] },
+        "description": "오디오 파일 업로드 → { text } 반환. 'audio' 필드에 파일 첨부(Body > form-data > audio: File).\n반환 text 를 다시 /api/chat 으로 보내면 음성 명령 완성.\n빈 오디오 400 / 인식 실패 502."
+      }
+    },
+    {
+      "name": "State - 대시보드 (전체 온실)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/state", "host": ["{{baseUrl}}"], "path": ["api", "state"] },
+        "description": "온실 1/2/3 현황 목록. { greenhouses: [{id,name,status,temperature,humidity,devices,last_updated}] }"
+      }
+    },
+    {
+      "name": "State - 상세 (온실 1개)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/state/{{greenhouseId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "state", "{{greenhouseId}}"]
+        },
+        "description": "특정 온실 상세(상태/사유/추천동작/현재값/이력). 없는 id 는 404. greenhouseId 변수로 조절(기본 2)."
+      }
+    },
+    {
+      "name": "Alerts - 목록",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/alerts", "host": ["{{baseUrl}}"], "path": ["api", "alerts"] },
+        "description": "활성 알림 목록(warning/critical). 기본 데이터에선 gh2(습도 82%) 알림이 뜸."
+      }
+    },
+    {
+      "name": "Alerts - 원터치 실행",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/alerts/{{alertId}}/action",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "alerts", "{{alertId}}", "action"]
+        },
+        "description": "알림의 추천 동작 실행(예: 창문 열기). 성공 시 알림 해제. 없는 알림 404. alertId 변수(기본 gh2-humidity)."
+      }
+    },
+    {
+      "name": "Alerts - 무시(dismiss)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/alerts/{{alertId}}/dismiss",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "alerts", "{{alertId}}", "dismiss"]
+        },
+        "description": "알림 무시. 없는/비활성 알림 404. { success: true }"
+      }
+    },
+    {
+      "name": "Reset (데모 초기화)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/reset", "host": ["{{baseUrl}}"], "path": ["api", "reset"] },
+        "description": "장비 상태/세션/알림 전부 초기값으로 리셋. 리허설·재시연용."
+      }
+    }
+  ]
+}

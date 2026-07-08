@@ -8,7 +8,7 @@
 ```bash
 cd backend
 cp env/.env.example env/.env    # OPENAI_API_KEY 채우기 (커밋 금지!)
-uv run python app/server.py     # http://localhost:8000/docs
+uv run python -m app.server     # http://localhost:8000/docs
 ```
 
 ## 채울 파일 순서
