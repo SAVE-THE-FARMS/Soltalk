@@ -24,9 +24,14 @@
 > 이 계약만 먼저 맞춰두면 둘이 동시에 따로 개발 가능.
 
 ## 접점 계약 (프론트 ↔ 백엔드) — 제일 먼저 합의
-- 요청: `POST /chat`  body `{ "message": "차광막 닫아줘" }`
-- 응답: `{ "reply": "차광막을 닫았어요." }`
-- (이미 `backend/app/server.py` 와 `frontend/src/api.js` 에 이 형태로 잡혀 있음)
+
+> ⚠️ 2026-07-08 변경: `Docs/smartfarm_api_spec.md` 반영으로 엔드포인트가 `/chat` → `/api/chat` 로 바뀜.
+> 프론트는 `frontend/src/api.js` 의 fetch 경로 한 줄만 고치면 됨 (`session_id`는 선택값이라 안 보내도 동작).
+
+- 요청: `POST /api/chat`  body `{ "message": "차광막 닫아줘", "session_id": "선택, 생략 가능" }`
+- 응답: `{ "reply": "차광막을 닫았어요.", "actions_taken": [...], "updated_state": {...} }`
+  - 프론트는 지금처럼 `reply` 필드만 읽으면 됨. `actions_taken`/`updated_state`는 대시보드용(무시 가능).
+- (구현: `backend/app/server.py`. 프론트 쪽 반영은 담당자가 `frontend/src/api.js` 직접 수정)
 
 ---
 
