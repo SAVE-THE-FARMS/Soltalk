@@ -3,7 +3,8 @@
 > 이틀 안에 **자연어 → 의도파악(OpenAI) → Mock IoT 제어·조회 → 자연어 응답** end-to-end 데모 완성.
 > 배경/결정: `../Docs/2026.07.08_01_[Ref]_SolTalk_HANDOFF.md` · 프로젝트 규칙: `../CLAUDE.md`
 
-## 파트별 TODO 문서
+## 문서
+- ⚙️ [SETUP.md](./SETUP.md) — **개발 환경 셋업 (제일 먼저, 딱 한 번)** — 도구 설치·실행 확인
 - 🛠 [BACKEND.md](./BACKEND.md) — 개발 A (FastAPI, OpenAI function calling, Mock IoT)
 - 💬 [FRONTEND.md](./FRONTEND.md) — 개발 B (React 챗 UI, 음성 입력)
 - 📋 [PLANNING.md](./PLANNING.md) — 기획 (데모 시나리오, mock 데이터, README)
@@ -30,10 +31,8 @@
 ---
 
 ## 공통 준비 (제일 먼저, 다같이)
-- [ ] 각자 repo 받기 (git clone) — 깃 처음이면 멘토가 5분 설명
-- [ ] `ANTHROPIC_API_KEY` 발급·공유 (**커밋 금지!** 각자 로컬 `.env` 에만)
-- [ ] 백엔드 실행 확인: `cd backend` → `cp env/.env.example env/.env` → `uv run python app/server.py` → http://localhost:8000/docs
-- [ ] 프론트 실행 확인: `cd frontend` → `npm install` → `npm run dev` → http://localhost:5173
+- [ ] **[SETUP.md](./SETUP.md) 대로 개발 환경 세팅 + 실행 확인** (도구 설치, 백엔드/프론트 켜기)
+- [ ] `OPENAI_API_KEY` 는 팀 리드가 제공/관리 (학생은 발급·커밋 불필요)
 - [ ] 위 "접점 계약" 팀 전체 합의
 
 ## 일정 (이틀)
