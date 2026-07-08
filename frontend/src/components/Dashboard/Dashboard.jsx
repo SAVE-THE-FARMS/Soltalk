@@ -3,17 +3,16 @@ import GreenhouseCard from "./GreenhouseCard";
 import ProductionWidget from "./ProductionWidget";
 import HistoryTimeline from "./HistoryTimeline";
 import DemoControls from "./DemoControls";
+import { SEVERITY_ORDER } from "../../lib/labels";
 
-const SEVERITY_ORDER = { critical: 2, warning: 1, normal: 0 };
-
-export default function Dashboard({ farm, onSelectGreenhouse, onReset }) {
+export default function Dashboard({ farm, onSelectGreenhouse, onReset, onEscalate }) {
   const sorted = [...farm.greenhouses].sort(
     (a, b) => SEVERITY_ORDER[b.status] - SEVERITY_ORDER[a.status]
   );
 
   return (
     <div className="dashboard">
-      <DemoControls onReset={onReset} onEscalate={farm.escalateDemo} />
+      <DemoControls onReset={onReset} onEscalate={onEscalate} />
       <AlertBanner notifications={farm.notifications} onSelect={onSelectGreenhouse} />
       <div className="dashboard__grid">
         {sorted.map((gh) => (

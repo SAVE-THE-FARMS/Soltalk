@@ -6,3 +6,4 @@ export const ACTION_LABEL = {
   on: "켜짐",
   off: "꺼짐",
 };
+export const SEVERITY_ORDER = { critical: 2, warning: 1, normal: 0 };

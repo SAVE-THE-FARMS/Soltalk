@@ -47,6 +47,14 @@ export default function App() {
     setDismissedIds([]);
   }
 
+  function handleEscalate() {
+    const warningGreenhouse = farm.greenhouses.find((gh) => gh.status === "warning");
+    farm.escalateDemo();
+    if (warningGreenhouse) {
+      setDismissedIds((prev) => prev.filter((id) => id !== warningGreenhouse.id));
+    }
+  }
+
   const selectedGreenhouse = farm.greenhouses.find(
     (gh) => gh.id === selectedGreenhouseId
   );
@@ -94,6 +102,7 @@ export default function App() {
             farm={farm}
             onSelectGreenhouse={setSelectedGreenhouseId}
             onReset={handleReset}
+            onEscalate={handleEscalate}
           />
         )}
       </div>

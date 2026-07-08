@@ -4,10 +4,9 @@ import {
   INITIAL_HISTORY_LOG,
   INITIAL_PRODUCTION,
 } from "./mockData";
-import { ACTION_LABEL, DEVICE_LABEL } from "./labels";
+import { ACTION_LABEL, DEVICE_LABEL, SEVERITY_ORDER } from "./labels";
 
 const STATUS_STEP_DOWN = { critical: "warning", warning: "normal" };
-const SEVERITY_ORDER = { critical: 2, warning: 1, normal: 0 };
 
 function formatNow() {
   const d = new Date();
