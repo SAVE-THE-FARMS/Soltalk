@@ -1,4 +1,4 @@
-export default function TopNav({ view, onChangeView, warningCount }) {
+export default function TopNav({ view, onChangeView, warningCount, onOpenInbox }) {
   return (
     <nav className="top-nav">
       <button
@@ -14,7 +14,9 @@ export default function TopNav({ view, onChangeView, warningCount }) {
         대시보드
       </button>
       {warningCount > 0 && (
-        <span className="top-nav__badge">{warningCount}</span>
+        <button className="top-nav__badge" onClick={onOpenInbox}>
+          🟡 {warningCount}
+        </button>
       )}
     </nav>
   );

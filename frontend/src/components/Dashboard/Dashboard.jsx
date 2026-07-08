@@ -6,14 +6,14 @@ import DemoControls from "./DemoControls";
 
 const SEVERITY_ORDER = { critical: 2, warning: 1, normal: 0 };
 
-export default function Dashboard({ farm, onSelectGreenhouse }) {
+export default function Dashboard({ farm, onSelectGreenhouse, onReset }) {
   const sorted = [...farm.greenhouses].sort(
     (a, b) => SEVERITY_ORDER[b.status] - SEVERITY_ORDER[a.status]
   );
 
   return (
     <div className="dashboard">
-      <DemoControls onReset={farm.resetDemo} onEscalate={farm.escalateDemo} />
+      <DemoControls onReset={onReset} onEscalate={farm.escalateDemo} />
       <AlertBanner notifications={farm.notifications} onSelect={onSelectGreenhouse} />
       <div className="dashboard__grid">
         {sorted.map((gh) => (

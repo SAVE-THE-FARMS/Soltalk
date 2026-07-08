@@ -1,21 +1,50 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ChatScreen from "./components/ChatScreen";
 import TopNav from "./components/TopNav";
 import Dashboard from "./components/Dashboard/Dashboard";
 import GreenhouseDetail from "./components/GreenhouseDetail";
+import CriticalBanner from "./components/NotificationCenter/CriticalBanner";
+import NotificationInbox from "./components/NotificationCenter/NotificationInbox";
 import { useFarmData } from "./lib/useFarmData";
 
 export default function App() {
   const [view, setView] = useState("chat");
   const [selectedGreenhouseId, setSelectedGreenhouseId] = useState(null);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState([]);
+  const hasInteractedRef = useRef(false);
   const farm = useFarmData();
-  const warningCount = farm.notifications.filter(
-    (n) => n.severity === "warning"
-  ).length;
+
+  const criticalNotifications = farm.notifications.filter(
+    (n) => n.severity === "critical" && !dismissedIds.includes(n.greenhouseId)
+  );
+  const warningNotifications = farm.notifications.filter(
+    (n) => n.severity === "warning" && !dismissedIds.includes(n.greenhouseId)
+  );
 
   function handleChangeView(nextView) {
     setSelectedGreenhouseId(null);
     setView(nextView);
+  }
+
+  function handleAction(greenhouseId) {
+    const gh = farm.greenhouses.find((g) => g.id === greenhouseId);
+    if (gh?.recommendedAction) {
+      farm.controlDevice(
+        greenhouseId,
+        gh.recommendedAction.device,
+        gh.recommendedAction.action
+      );
+    }
+  }
+
+  function handleDismiss(greenhouseId) {
+    setDismissedIds((prev) => [...prev, greenhouseId]);
+  }
+
+  function handleReset() {
+    farm.resetDemo();
+    setDismissedIds([]);
   }
 
   const selectedGreenhouse = farm.greenhouses.find(
@@ -23,9 +52,33 @@ export default function App() {
   );
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      onClickCapture={() => {
+        hasInteractedRef.current = true;
+      }}
+    >
+      <CriticalBanner
+        notifications={criticalNotifications}
+        onAction={handleAction}
+        onDismiss={handleDismiss}
+        canPlaySound={hasInteractedRef.current}
+      />
       <h1>SolTalk 🌱</h1>
-      <TopNav view={view} onChangeView={handleChangeView} warningCount={warningCount} />
+      <TopNav
+        view={view}
+        onChangeView={handleChangeView}
+        warningCount={warningNotifications.length}
+        onOpenInbox={() => setInboxOpen(true)}
+      />
+      {inboxOpen && (
+        <NotificationInbox
+          notifications={warningNotifications}
+          onAction={handleAction}
+          onDismiss={handleDismiss}
+          onClose={() => setInboxOpen(false)}
+        />
+      )}
       <div className={view === "chat" ? "screen" : "screen is-hidden"}>
         <ChatScreen />
       </div>
@@ -37,7 +90,11 @@ export default function App() {
             onControlDevice={farm.controlDevice}
           />
         ) : (
-          <Dashboard farm={farm} onSelectGreenhouse={setSelectedGreenhouseId} />
+          <Dashboard
+            farm={farm}
+            onSelectGreenhouse={setSelectedGreenhouseId}
+            onReset={handleReset}
+          />
         )}
       </div>
     </div>
