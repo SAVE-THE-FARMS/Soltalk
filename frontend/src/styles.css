@@ -200,3 +200,26 @@ body {
   font-size: 13px;
 }
 .history-timeline__time { color: #999; min-width: 40px; }
+
+.greenhouse-detail { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 10px; }
+.greenhouse-detail__back { align-self: flex-start; border: none; background: none; color: #2e7d32; cursor: pointer; padding: 4px 0; }
+.greenhouse-detail__header { display: flex; align-items: center; gap: 8px; }
+.greenhouse-detail__cause { color: #b71c1c; font-size: 14px; }
+.greenhouse-detail__action {
+  align-self: flex-start;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.greenhouse-detail__toast { background: #eaf7ea; color: #2e7d32; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.greenhouse-detail__chart { background: #fff; border-radius: 12px; padding: 12px; }
+.greenhouse-detail__svg { width: 100%; height: 80px; }
+.chart-line--temp { stroke: #e53935; stroke-width: 2; }
+.chart-line--humidity { stroke: #1e88e5; stroke-width: 2; }
+.greenhouse-detail__legend { display: flex; gap: 12px; font-size: 12px; margin-top: 4px; }
+.chart-legend--temp { color: #e53935; }
+.chart-legend--humidity { color: #1e88e5; }
+.greenhouse-detail__times { display: flex; justify-content: space-between; font-size: 11px; color: #999; margin-top: 2px; }
