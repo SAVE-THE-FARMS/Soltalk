@@ -72,7 +72,7 @@ Soltalk/
 cd backend
 cp env/.env.example env/.env    # OPENAI_API_KEY 설정
 uv sync
-uv run python -m app.server     # http://localhost:8000/docs
+uv run python app/server.py     # http://localhost:8000/docs
 ```
 
 **프론트**

@@ -1,20 +1,22 @@
-"""alerts_service 테스트.
+"""AlertService 테스트.
 
-반환 스키마 (설계 결정):
-  list_alerts(iot_by_id, now): [{"id","level","greenhouse_id","message","created_at","escalated","action"}, ...]
-  dismiss(alert_id, iot_by_id) -> bool  (현재 활성 알림이어서 닫았으면 True)
-  execute_action(alert_id, iot_by_id) -> {"success","message","updated_state"} | None (없으면 None)
+list_alerts(now): [{"id","level","greenhouse_id","message","created_at","escalated","action"}, ...]
+dismiss(alert_id) -> bool  (현재 활성 알림이어서 닫았으면 True)
+execute_action(alert_id) -> {"success","message","updated_state"} | None (없으면 None)
 """
 
 from datetime import datetime
 
-from app import alerts_service
+from app.data.greenhouse_data import GREENHOUSES
+from app.data.mock_data import MOCK_DATA
 from app.iot.mock import MockIoTAdapter
+from app.services.alerts import AlertService
+from app.services.greenhouse import GreenhouseService
 
 FIXED_NOW = datetime(2026, 7, 8, 13, 0, 0)
 
 
-def _iot_by_id():
+def _default_iot_by_id():
     return {
         1: MockIoTAdapter(),
         2: MockIoTAdapter(initial_state={"shade": "open", "window": "closed", "irrigation": "off"}),
@@ -22,10 +24,16 @@ def _iot_by_id():
     }
 
 
-def test_list_alerts_returns_only_warning_or_critical_greenhouses():
-    alerts_service.reset()
+def _service(iot_by_id=None):
+    iot_by_id = iot_by_id or _default_iot_by_id()
+    greenhouse_service = GreenhouseService(iot_by_id, GREENHOUSES, MOCK_DATA)
+    return AlertService(greenhouse_service), iot_by_id
 
-    alerts = alerts_service.list_alerts(_iot_by_id(), now=FIXED_NOW)
+
+def test_list_alerts_returns_only_warning_or_critical_greenhouses():
+    service, _ = _service()
+
+    alerts = service.list_alerts(now=FIXED_NOW)
 
     assert [a["greenhouse_id"] for a in alerts] == [2]
     assert alerts[0]["level"] == "warning"
@@ -34,33 +42,30 @@ def test_list_alerts_returns_only_warning_or_critical_greenhouses():
 
 
 def test_dismiss_hides_alert_from_future_listings():
-    alerts_service.reset()
-    iot_by_id = _iot_by_id()
+    service, _ = _service()
 
-    dismissed = alerts_service.dismiss("gh2-humidity", iot_by_id)
+    dismissed = service.dismiss("gh2-humidity")
 
     assert dismissed is True
-    assert alerts_service.list_alerts(iot_by_id, now=FIXED_NOW) == []
+    assert service.list_alerts(now=FIXED_NOW) == []
 
 
 def test_dismiss_unknown_alert_returns_false():
-    alerts_service.reset()
+    service, _ = _service()
 
-    assert alerts_service.dismiss("gh999-humidity", _iot_by_id()) is False
+    assert service.dismiss("gh999-humidity") is False
 
 
 def test_dismiss_inactive_alert_returns_false():
-    alerts_service.reset()
-    iot_by_id = _iot_by_id()  # 온실 1은 습도 정상 -> gh1-humidity 는 활성 알림이 아님
+    service, _ = _service()  # 온실 1은 습도 정상 -> gh1-humidity 는 활성 알림이 아님
 
-    assert alerts_service.dismiss("gh1-humidity", iot_by_id) is False
+    assert service.dismiss("gh1-humidity") is False
 
 
 def test_execute_action_controls_device_and_dismisses_alert():
-    alerts_service.reset()
-    iot_by_id = _iot_by_id()
+    service, iot_by_id = _service()
 
-    result = alerts_service.execute_action("gh2-humidity", iot_by_id)
+    result = service.execute_action("gh2-humidity")
 
     assert result == {
         "success": True,
@@ -68,13 +73,13 @@ def test_execute_action_controls_device_and_dismisses_alert():
         "updated_state": {"shade": "open", "window": "open", "irrigation": "off"},
     }
     assert iot_by_id[2].state["window"] == "open"
-    assert alerts_service.list_alerts(iot_by_id, now=FIXED_NOW) == []
+    assert service.list_alerts(now=FIXED_NOW) == []
 
 
 def test_execute_action_on_unknown_alert_returns_none():
-    alerts_service.reset()
+    service, _ = _service()
 
-    assert alerts_service.execute_action("gh999-humidity", _iot_by_id()) is None
+    assert service.execute_action("gh999-humidity") is None
 
 
 class _FailingIoT:
@@ -88,11 +93,11 @@ class _FailingIoT:
 
 
 def test_execute_action_keeps_alert_active_when_control_fails():
-    alerts_service.reset()
-    iot_by_id = _iot_by_id()
+    iot_by_id = _default_iot_by_id()
     iot_by_id[2] = _FailingIoT({"shade": "open", "window": "closed", "irrigation": "off"})
+    service, _ = _service(iot_by_id)
 
-    result = alerts_service.execute_action("gh2-humidity", iot_by_id)
+    result = service.execute_action("gh2-humidity")
 
     assert result["success"] is False
-    assert [a["id"] for a in alerts_service.list_alerts(iot_by_id)] == ["gh2-humidity"]
+    assert [a["id"] for a in service.list_alerts()] == ["gh2-humidity"]

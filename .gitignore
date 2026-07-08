@@ -17,3 +17,6 @@ build/
 .DS_Store
 .vscode/
 .idea/
+
+# --- 격리 작업용 워크트리 ---
+.worktrees/

@@ -1,15 +1,15 @@
-"""agent.handle_message 테스트.
+"""ChatAgent 테스트.
 
 OpenAI 호출은 외부 네트워크 의존이라 실제 API를 부르지 않고,
 OpenAI SDK 응답 모양(choices[0].message.tool_calls 등)만 흉내 낸 fake client 를 주입해서 검증한다.
 
-반환 스키마: {"reply": str, "actions_taken": [{"device", "greenhouse_id", "action", "success"}, ...]}
+handle() 반환 스키마: {"reply": str, "actions_taken": [{"device","greenhouse_id","action","success"}, ...]}
 """
 
 from types import SimpleNamespace
 
-from app.agent import handle_message
 from app.iot.mock import MockIoTAdapter
+from app.services.chat_agent import ChatAgent
 
 
 def _message(content=None, tool_calls=None):
@@ -36,35 +36,35 @@ class FakeOpenAI:
         return next(self._responses)
 
 
-def test_handle_message_never_returns_none_reply():
-    client = FakeOpenAI([_response(_message(content=None))])
+def _agent(responses, iot=None):
+    return ChatAgent(iot=iot or MockIoTAdapter(), client=FakeOpenAI(responses))
 
-    result = handle_message("...", client=client, iot=MockIoTAdapter())
+
+def test_handle_never_returns_none_reply():
+    result = _agent([_response(_message(content=None))]).handle("...")
 
     assert isinstance(result["reply"], str)
     assert result["reply"] != ""
 
 
-def test_handle_message_returns_plain_reply_when_no_tool_needed():
-    client = FakeOpenAI([_response(_message(content="안녕하세요! 무엇을 도와드릴까요?"))])
-    iot = MockIoTAdapter()
-
-    result = handle_message("안녕", client=client, iot=iot)
+def test_handle_returns_plain_reply_when_no_tool_needed():
+    result = _agent([_response(_message(content="안녕하세요! 무엇을 도와드릴까요?"))]).handle("안녕")
 
     assert result == {"reply": "안녕하세요! 무엇을 도와드릴까요?", "actions_taken": []}
 
 
-def test_handle_message_executes_control_device_tool_call():
+def test_handle_executes_control_device_tool_call():
     tool_call = _tool_call("call1", "control_device", '{"device": "shade", "action": "close"}')
-    client = FakeOpenAI(
+    iot = MockIoTAdapter()
+    agent = _agent(
         [
             _response(_message(tool_calls=[tool_call])),
             _response(_message(content="차광막을 닫았어요.")),
-        ]
+        ],
+        iot=iot,
     )
-    iot = MockIoTAdapter()
 
-    result = handle_message("차광막 닫아줘", client=client, iot=iot)
+    result = agent.handle("차광막 닫아줘")
 
     assert result == {
         "reply": "차광막을 닫았어요.",
@@ -73,22 +73,37 @@ def test_handle_message_executes_control_device_tool_call():
     assert iot.state["shade"] == "closed"
 
 
-def test_handle_message_executes_read_data_tool_call_without_actions_taken():
+def test_handle_executes_read_data_tool_call_without_actions_taken():
     tool_call = _tool_call("call1", "read_data", '{"target": "temperature"}')
-    client = FakeOpenAI(
+    agent = _agent(
         [
             _response(_message(tool_calls=[tool_call])),
             _response(_message(content="지금 온도는 24.5도예요.")),
         ]
     )
-    iot = MockIoTAdapter()
 
-    result = handle_message("지금 온도 몇 도야?", client=client, iot=iot)
+    result = agent.handle("지금 온도 몇 도야?")
 
     assert result == {"reply": "지금 온도는 24.5도예요.", "actions_taken": []}
 
 
-def test_handle_message_includes_prior_history_in_prompt():
+def test_handle_recovers_from_malformed_tool_arguments():
+    """모델이 깨진 JSON 을 반환해도 예외로 죽지 않고 안내 응답으로 이어져야 한다."""
+    bad_call = _tool_call("call1", "control_device", "{not valid json")
+    agent = _agent(
+        [
+            _response(_message(tool_calls=[bad_call])),
+            _response(_message(content="죄송해요, 다시 말씀해 주세요.")),
+        ]
+    )
+
+    result = agent.handle("차광막 닫아줘")
+
+    assert result["reply"] == "죄송해요, 다시 말씀해 주세요."
+    assert result["actions_taken"] == []
+
+
+def test_handle_includes_prior_history_in_prompt():
     captured = {}
 
     class RecordingOpenAI(FakeOpenAI):
@@ -96,12 +111,15 @@ def test_handle_message_includes_prior_history_in_prompt():
             captured["messages"] = kwargs["messages"]
             return super()._create(**kwargs)
 
-    client = RecordingOpenAI([_response(_message(content="네, 다시 닫았어요."))])
+    agent = ChatAgent(
+        iot=MockIoTAdapter(),
+        client=RecordingOpenAI([_response(_message(content="네, 다시 닫았어요."))]),
+    )
     history = [
         {"role": "user", "content": "차광막 닫아줘"},
         {"role": "assistant", "content": "차광막을 닫았어요."},
     ]
 
-    handle_message("그거 다시 닫아줘", client=client, iot=MockIoTAdapter(), history=history)
+    agent.handle("그거 다시 닫아줘", history=history)
 
     assert captured["messages"][1:3] == history

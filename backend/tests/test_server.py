@@ -1,17 +1,16 @@
 """server.py 엔드포인트 테스트.
 
-agent.handle_message 는 monkeypatch 로 대체해 실제 OpenAI 호출 없이 검증한다.
+container.chat_agent.handle 은 monkeypatch 로 대체해 실제 OpenAI 호출 없이 검증한다.
+server 모듈은 import 시 AppContainer 인스턴스(container) 하나를 만들어 공유한다.
 """
 
 from fastapi.testclient import TestClient
 
-from app import alerts_service, server, session_service, state
+from app import server
 
 
 def _reset_all():
-    session_service.reset()
-    alerts_service.reset()
-    state.reset_all()
+    server.container.reset_all()
 
 
 def test_health_ok():
@@ -23,10 +22,10 @@ def test_health_ok():
 
 
 def test_chat_returns_reply_actions_and_state(monkeypatch):
-    session_service.reset()
+    _reset_all()
     monkeypatch.setattr(
-        server.agent,
-        "handle_message",
+        server.container.chat_agent,
+        "handle",
         lambda message, history=None: {
             "reply": "차광막을 닫았어요.",
             "actions_taken": [{"device": "shade", "greenhouse_id": 1, "action": "close", "success": True}],
@@ -44,18 +43,42 @@ def test_chat_returns_reply_actions_and_state(monkeypatch):
 
 
 def test_chat_returns_friendly_message_when_agent_fails(monkeypatch):
-    session_service.reset()
+    _reset_all()
 
     def boom(message, history=None):
         raise RuntimeError("openai down")
 
-    monkeypatch.setattr(server.agent, "handle_message", boom)
+    monkeypatch.setattr(server.container.chat_agent, "handle", boom)
     client = TestClient(server.app)
 
     resp = client.post("/api/chat", json={"message": "차광막 닫아줘"})
 
     assert resp.status_code == 200
     assert "죄송" in resp.json()["reply"]
+
+
+def test_transcribe_returns_text(monkeypatch):
+    _reset_all()
+    monkeypatch.setattr(
+        server.container.transcription,
+        "transcribe",
+        lambda audio, filename="audio.webm": "차광막 닫아줘",
+    )
+    client = TestClient(server.app)
+
+    resp = client.post("/api/transcribe", files={"audio": ("cmd.webm", b"fake-bytes", "audio/webm")})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"text": "차광막 닫아줘"}
+
+
+def test_transcribe_rejects_empty_audio():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post("/api/transcribe", files={"audio": ("empty.webm", b"", "audio/webm")})
+
+    assert resp.status_code == 400
 
 
 def test_get_state_returns_all_greenhouses():
@@ -138,7 +161,7 @@ def test_alert_dismiss_on_unknown_alert_is_404():
 
 def test_reset_restores_device_state():
     _reset_all()
-    state.iot.control("shade", "close")
+    server.container.chat_iot.control("shade", "close")
     client = TestClient(server.app)
     assert client.get("/api/state").json()["greenhouses"][0]["devices"]["shade"] == "closed"
 
