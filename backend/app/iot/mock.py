@@ -7,6 +7,16 @@ MockIoTAdapter (뼈대).
 
 from .base import IoTAdapter
 
+# action(동작) -> state(결과 상태) 정규화. "close" 동작의 결과 상태는 "closed".
+_ACTION_TO_STATE = {"open": "open", "close": "closed", "on": "on", "off": "off"}
+
+# device 별로 허용되는 action.
+_ALLOWED_ACTIONS = {
+    "shade": {"open", "close"},
+    "window": {"open", "close"},
+    "irrigation": {"on", "off"},
+}
+
 
 class MockIoTAdapter(IoTAdapter):
     def __init__(self):
@@ -18,9 +28,12 @@ class MockIoTAdapter(IoTAdapter):
         }
 
     def control(self, device: str, action: str) -> dict:
-        # TODO(학생): device 상태를 action 으로 바꾸고, 결과 상태를 반환.
-        #   - 없는 device / 이상한 action 처리(확인 피드백)도 고민.
-        raise NotImplementedError
+        if device not in self.state:
+            return {"ok": False, "device": device, "state": None, "reason": "unknown_device"}
+
+        new_state = _ACTION_TO_STATE.get(action, action)
+        self.state[device] = new_state
+        return {"ok": True, "device": device, "state": new_state}
 
     def read(self, target: str) -> dict:
         # TODO(학생): app/data/mock_data.py 의 더미 데이터에서 target 을 찾아 반환.
