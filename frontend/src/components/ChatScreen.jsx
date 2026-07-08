@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { sendMessage } from "../api";
 
 // SolTalk 채팅 화면.
@@ -7,32 +7,41 @@ import { sendMessage } from "../api";
 const ACTION_DONE_PATTERN = /(열었어요|닫았어요|틀었어요|껐어요)/;
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState([]); // { role: "user"|"bot", text, pending? }
+  const [messages, setMessages] = useState([]); // { id, role: "user"|"bot", text, pending? }
   const [input, setInput] = useState("");
+  const nextIdRef = useRef(0);
 
   async function handleSend() {
     const text = input.trim();
     if (!text) return;
-    setMessages((m) => [...m, { role: "user", text }]);
+    const userId = nextIdRef.current++;
+    const botId = nextIdRef.current++;
+    setMessages((m) => [
+      ...m,
+      { id: userId, role: "user", text },
+      { id: botId, role: "bot", text: "...", pending: true },
+    ]);
     setInput("");
-    setMessages((m) => [...m, { role: "bot", text: "...", pending: true }]);
 
     try {
       const reply = await sendMessage(text);
-      setMessages((m) => {
-        const next = [...m];
-        next[next.length - 1] = { role: "bot", text: reply };
-        return next;
-      });
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === botId ? { id: botId, role: "bot", text: reply } : msg
+        )
+      );
     } catch (e) {
-      setMessages((m) => {
-        const next = [...m];
-        next[next.length - 1] = {
-          role: "bot",
-          text: "⚠️ 서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.",
-        };
-        return next;
-      });
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === botId
+            ? {
+                id: botId,
+                role: "bot",
+                text: "⚠️ 서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.",
+              }
+            : msg
+        )
+      );
     }
   }
 
@@ -48,12 +57,12 @@ export default function ChatScreen() {
         {messages.length === 0 && (
           <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
         )}
-        {messages.map((m, i) => {
+        {messages.map((m) => {
           const isAction =
             m.role === "bot" && !m.pending && ACTION_DONE_PATTERN.test(m.text);
           return (
             <div
-              key={i}
+              key={m.id}
               className={`msg ${m.role}${m.pending ? " pending" : ""}${
                 isAction ? " action" : ""
               }`}
