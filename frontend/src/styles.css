@@ -17,6 +17,13 @@ body {
   flex-direction: column;
 }
 
+.chat-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chat {
   flex: 1;
   overflow-y: auto;
@@ -50,3 +57,7 @@ body {
   color: #fff;
   cursor: pointer;
 }
+
+.msg.pending { color: #999; font-style: italic; }
+.msg.bot.action { background: #eaf7ea; border-color: #bfe3bf; }
+.action-check { margin-right: 2px; }
