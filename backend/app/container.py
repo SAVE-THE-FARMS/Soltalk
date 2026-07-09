@@ -7,7 +7,8 @@ server.py 가 이걸 만들어 각 엔드포인트에서 사용한다.
 
 from .data.greenhouse_data import GREENHOUSES
 from .data.mock_data import MOCK_DATA
-from .iot.mock import MockIoTAdapter
+from .iot.base import IoTAdapter
+from .iot.virtual import VirtualFarmAdapter
 from .services import (
     AlertService,
     ChatAgent,
@@ -17,11 +18,26 @@ from .services import (
 )
 
 
+def _initial_environment_for(record: dict) -> dict:
+    """온실 레코드의 정적 환경값을 시뮬레이션 초기값으로. 없으면(온실1) 센서 더미 데이터."""
+    if "temperature" in record and "humidity" in record:
+        return {"temperature": record["temperature"], "humidity": record["humidity"]}
+    return {
+        "temperature": MOCK_DATA["temperature"]["value"],
+        "humidity": MOCK_DATA["humidity"]["value"],
+    }
+
+
 class AppContainer:
     def __init__(self):
-        # 온실마다 자체 어댑터 (대시보드/알림 원터치 실행도 control() 검증 로직을 그대로 타게)
-        self.iot_by_greenhouse: dict[int, MockIoTAdapter] = {
-            greenhouse_id: MockIoTAdapter(initial_state=record.get("initial_devices"))
+        # 온실마다 자체 가상 시뮬레이션 어댑터 (virtualfarm/ADAPTER_CONTRACT.md 4절)
+        # — 창문을 열면 시간이 지나며 습도가 실제로 내려간다 (lazy-tick)
+        self.iot_by_greenhouse: dict[int, IoTAdapter] = {
+            greenhouse_id: VirtualFarmAdapter(
+                initial_environment=_initial_environment_for(record),
+                initial_devices=record.get("initial_devices"),
+                sensor_data=MOCK_DATA,  # production 등 시뮬레이션 밖 target 의 fallback
+            )
             for greenhouse_id, record in GREENHOUSES.items()
         }
         self.greenhouse_service = GreenhouseService(self.iot_by_greenhouse, GREENHOUSES, MOCK_DATA)
@@ -31,7 +47,7 @@ class AppContainer:
         self.transcription = TranscriptionService()
 
     @property
-    def chat_iot(self) -> MockIoTAdapter:
+    def chat_iot(self) -> IoTAdapter:
         """챗봇이 제어하는 온실(1번)의 어댑터."""
         return self.iot_by_greenhouse[ChatAgent.CHAT_GREENHOUSE_ID]
 

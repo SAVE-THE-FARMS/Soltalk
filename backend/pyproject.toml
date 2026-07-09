@@ -9,6 +9,7 @@ dependencies = [
     "openai",
     "python-dotenv",
     "python-multipart",
+    "soltalk-virtualfarm",
 ]
 
 [dependency-groups]
@@ -18,5 +19,8 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.uv.sources]
+soltalk-virtualfarm = { path = "../virtualfarm", editable = true }
 
 # 실행: backend/ 에서  ->  uv run python -m app.server

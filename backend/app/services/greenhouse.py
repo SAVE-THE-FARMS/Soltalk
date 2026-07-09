@@ -44,6 +44,15 @@ class GreenhouseService:
         return "normal"
 
     def _env_values_for(self, greenhouse_id: int) -> dict:
+        # 어댑터가 환경값을 직접 제공하면(=VirtualFarmAdapter 시뮬레이션) 그게 항상 우선.
+        # MockIoTAdapter 는 "environment" 를 모르므로(ok=False) 아래 정적/센서 데이터로 fallback.
+        env = self._iot_by_id[greenhouse_id].read("environment")
+        if env["ok"]:
+            return {
+                "temperature": round(env["value"]["temperature"], 1),
+                "humidity": round(env["value"]["humidity"], 1),
+            }
+
         record = self._greenhouses[greenhouse_id]
         if "temperature" in record and "humidity" in record:
             return {"temperature": record["temperature"], "humidity": record["humidity"]}

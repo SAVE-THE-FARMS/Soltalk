@@ -1,0 +1,24 @@
+[project]
+name = "soltalk-virtualfarm"
+version = "0.1.0"
+description = "SolTalk 가상 농장 시뮬레이션 — 시간 경과·장비 조작에 반응하는 가상 온실 상태 엔진"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+# backend 가 로컬 경로 의존성으로 설치할 수 있게 빌드 설정 (ADAPTER_CONTRACT.md 4-5절)
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sim"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+# 실행: virtualfarm/ 에서  ->  uv run python -m pytest tests/
