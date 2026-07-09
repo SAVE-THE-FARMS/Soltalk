@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sendMessage } from "../api";
 
 // SolTalk 채팅 화면.
@@ -6,13 +6,25 @@ import { sendMessage } from "../api";
 // 프론트 단순 텍스트 패턴 매칭(데모용 휴리스틱)이다.
 const ACTION_DONE_PATTERN = /(열었어요|닫았어요|틀었어요|껐어요)/;
 
+const QUICK_REPLIES = [
+  "차광막 닫아줘",
+  "창문 열어",
+  "지금 온도 몇 도야?",
+  "오늘 생산량 알려줘",
+];
+
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]); // { id, role: "user"|"bot", text, pending? }
   const [input, setInput] = useState("");
   const nextIdRef = useRef(0);
+  const bottomRef = useRef(null);
 
-  async function handleSend() {
-    const text = input.trim();
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  async function handleSend(overrideText) {
+    const text = (overrideText ?? input).trim();
     if (!text) return;
     const userId = nextIdRef.current++;
     const botId = nextIdRef.current++;
@@ -55,7 +67,20 @@ export default function ChatScreen() {
     <div className="chat-screen">
       <div className="chat">
         {messages.length === 0 && (
-          <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
+          <>
+            <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
+            <div className="quick-replies">
+              {QUICK_REPLIES.map((cmd) => (
+                <button
+                  key={cmd}
+                  className="quick-reply"
+                  onClick={() => handleSend(cmd)}
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+          </>
         )}
         {messages.map((m) => {
           const isAction =
@@ -72,6 +97,7 @@ export default function ChatScreen() {
             </div>
           );
         })}
+        <div ref={bottomRef} />
       </div>
 
       <div className="composer">
@@ -82,7 +108,7 @@ export default function ChatScreen() {
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="명령을 입력하세요"
         />
-        <button onClick={handleSend}>전송</button>
+        <button onClick={() => handleSend()}>전송</button>
       </div>
     </div>
   );
