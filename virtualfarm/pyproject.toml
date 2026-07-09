@@ -1,0 +1,16 @@
+[project]
+name = "soltalk-virtualfarm"
+version = "0.1.0"
+description = "SolTalk 가상 농장 시뮬레이션 — 시간 경과·장비 조작에 반응하는 가상 온실 상태 엔진"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+# 실행: virtualfarm/ 에서  ->  uv run python -m pytest tests/
