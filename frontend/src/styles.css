@@ -3,15 +3,21 @@
 * { box-sizing: border-box; }
 
 :root {
-  --color-critical: #e53935;
-  --color-warning: #fbc02d;
-  --color-normal: #2e7d32;
+  --color-paper: #F4F7ED;
+  --color-ink: #232A21;
+  --color-leaf: #3B6B3D;
+  --color-leaf-soft: #DCEBD1;
+  --color-sun: #E8A33D;
+  --color-critical: #C4432E;
+  --color-warning: #C98A2B;
+  --color-normal: var(--color-leaf);
 }
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #f5f5f5;
+  font-family: "Pretendard", system-ui, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
 }
 
 .app {
@@ -21,6 +27,12 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--color-paper);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(59, 107, 61, 0.04) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(-45deg, rgba(59, 107, 61, 0.04) 0 1px, transparent 1px 24px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(35, 42, 33, 0.08);
 }
 
 .chat-screen {
@@ -45,7 +57,7 @@ body {
   border-radius: 12px;
   white-space: pre-wrap;
 }
-.msg.user { margin-left: auto; background: #d1e7ff; }
+.msg.user { margin-left: auto; background: var(--color-leaf-soft); }
 .msg.bot  { margin-right: auto; background: #fff; border: 1px solid #eee; }
 
 .composer { display: flex; gap: 8px; }
@@ -54,18 +66,19 @@ body {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 8px;
+  font-size: 16px;
 }
 .composer button {
   padding: 10px 14px;
   border: none;
   border-radius: 8px;
-  background: #2e7d32;
+  background: var(--color-leaf);
   color: #fff;
   cursor: pointer;
 }
 
 .msg.pending { color: #999; font-style: italic; }
-.msg.bot.action { background: #eaf7ea; border-color: #bfe3bf; }
+.msg.bot.action { background: var(--color-leaf-soft); border-color: var(--color-leaf); }
 .action-check { margin-right: 2px; }
 
 /* .app 은 높이가 뷰포트로 고정돼 있는데(height: 100vh), 이 규칙이 없으면
@@ -84,7 +97,7 @@ body {
   font-weight: 600;
   color: #555;
 }
-.top-nav__tab.is-active { background: #2e7d32; color: #fff; }
+.top-nav__tab.is-active { background: var(--color-leaf); color: #fff; }
 .top-nav__badge {
   background: #fbc02d;
   color: #3a2a00;
@@ -178,10 +191,10 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
-.alert-banner--ok { background: none; color: #2e7d32; text-align: center; cursor: default; font-weight: 500; }
+.alert-banner--ok { background: none; color: var(--color-leaf); text-align: center; cursor: default; font-weight: 500; }
 .alert-banner--recovering { background: none; color: #4a6fa5; text-align: center; cursor: default; font-weight: 500; }
-.alert-banner--warning { background: #fff8e1; color: #8a6d00; }
-.alert-banner--critical { background: #ffebee; color: #b71c1c; }
+.alert-banner--warning { background: color-mix(in srgb, var(--color-warning) 18%, white); color: var(--color-ink); }
+.alert-banner--critical { background: color-mix(in srgb, var(--color-critical) 18%, white); color: var(--color-ink); }
 .alert-banner-list { display: flex; flex-direction: column; }
 
 .production-widget {
@@ -195,8 +208,8 @@ body {
 }
 .production-widget__label { display: block; font-size: 12px; color: #888; }
 .production-widget__value { font-size: 18px; font-weight: 700; }
-.production-widget__diff.is-up { color: #2e7d32; }
-.production-widget__diff.is-down { color: #e53935; }
+.production-widget__diff.is-up { color: var(--color-sun); }
+.production-widget__diff.is-down { color: var(--color-critical); }
 
 .history-timeline { list-style: none; margin: 0; padding: 0; }
 .history-timeline li {
@@ -209,7 +222,7 @@ body {
 .history-timeline__time { color: #999; min-width: 40px; }
 
 .greenhouse-detail { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 10px; }
-.greenhouse-detail__back { align-self: flex-start; border: none; background: none; color: #2e7d32; cursor: pointer; padding: 4px 0; }
+.greenhouse-detail__back { align-self: flex-start; border: none; background: none; color: var(--color-leaf); cursor: pointer; padding: 4px 0; }
 .greenhouse-detail__header { display: flex; align-items: center; gap: 8px; }
 /* --- 브리핑 블록 (경고/위험 온실 상세): 상황 → 위험 → 조치 방법 → 조치 버튼 --- */
 .briefing {
@@ -348,15 +361,15 @@ body {
   min-height: 44px;
 }
 .mic-btn--recording {
-  background: #e53935;
+  background: var(--color-critical);
   color: #fff;
   animation: mic-pulse 1s ease-in-out infinite;
 }
 @keyframes mic-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.5); }
-  50% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-critical) 50%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-critical) 0%, transparent); }
 }
-.mic-error { color: #b71c1c; font-size: 13px; margin: 4px 0; }
+.mic-error { color: var(--color-critical); font-size: 13px; margin: 4px 0; }
 
 @media (min-width: 600px) {
   .app { max-width: 600px; }
@@ -375,4 +388,40 @@ body {
 }
 
 .dashboard__status { text-align: center; color: #888; font-size: 13px; margin: 8px 0; }
-.dashboard__status--error { color: #b71c1c; }
+.dashboard__status--error { color: var(--color-critical); }
+
+/* 비주얼 아이덴티티 — 타이포그래피 */
+.display-face { font-family: "Fraunces", serif; }
+.data-face { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+.header-underline {
+  height: 3px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--color-sun), transparent);
+}
+
+/* 채팅 퀵 리플 */
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+.quick-reply {
+  border: 1px solid var(--color-leaf);
+  background: #fff;
+  color: var(--color-leaf);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* 작은 글자 가독성 보완 */
+.demo-controls__btn { font-size: 13px; }
+.history-timeline li { font-size: 14px; }
+.top-nav__badge { font-size: 13px; }
+.greenhouse-detail__times span { font-size: 13px; }
+.chart-legend { font-size: 13px; }

@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { sendMessage, transcribeAudio } from "../api";
 import { useRecorder } from "../lib/useRecorder";
 
+const QUICK_REPLIES = [
+  "차광막 닫아줘",
+  "창문 열어",
+  "지금 온도 몇 도야?",
+  "오늘 생산량 알려줘",
+];
+
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -10,7 +17,7 @@ export default function ChatScreen() {
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const { isRecording, elapsedSeconds, start, stop } = useRecorder({
@@ -27,8 +34,8 @@ export default function ChatScreen() {
     },
   });
 
-  async function handleSend() {
-    const text = input.trim();
+  async function handleSend(overrideText) {
+    const text = (overrideText ?? input).trim();
     if (!text) return;
     const userId = nextIdRef.current++;
     const botId = nextIdRef.current++;
@@ -72,7 +79,20 @@ export default function ChatScreen() {
     <div className="chat-screen">
       <div className="chat">
         {messages.length === 0 && (
-          <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
+          <>
+            <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
+            <div className="quick-replies">
+              {QUICK_REPLIES.map((cmd) => (
+                <button
+                  key={cmd}
+                  className="quick-reply"
+                  onClick={() => handleSend(cmd)}
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+          </>
         )}
         {messages.map((m) => {
           const isAction = m.role === "bot" && !m.pending && m.success;
@@ -107,7 +127,7 @@ export default function ChatScreen() {
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="명령을 입력하세요"
         />
-        <button onClick={handleSend}>전송</button>
+        <button onClick={() => handleSend()}>전송</button>
       </div>
     </div>
   );

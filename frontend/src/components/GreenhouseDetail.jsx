@@ -168,7 +168,7 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction, onToggl
       </button>
 
       <div className="greenhouse-detail__header">
-        <h2>{greenhouse.name}</h2>
+        <h2 className="display-face">{greenhouse.name}</h2>
         <StatusBadge status={greenhouse.status} />
       </div>
 
@@ -193,7 +193,7 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction, onToggl
           <span className="chart-legend chart-legend--humidity">● 습도</span>
           <span className="chart-legend chart-legend--temp">● 온도</span>
         </div>
-        <div className="greenhouse-detail__times">
+        <div className="greenhouse-detail__times data-face">
           {pickTimeLabels(history).map((h) => (
             <span key={h.timestamp}>{formatTime(h.timestamp)}</span>
           ))}

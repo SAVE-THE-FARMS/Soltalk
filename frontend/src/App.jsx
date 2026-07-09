@@ -65,7 +65,8 @@ export default function App() {
         onDismiss={handleDismiss}
         canPlaySound={hasInteractedRef.current}
       />
-      <h1>SolTalk 🌱</h1>
+      <h1 className="display-face">SolTalk 🌱</h1>
+      <div className="header-underline" />
       <TopNav
         view={view}
         onChangeView={handleChangeView}
