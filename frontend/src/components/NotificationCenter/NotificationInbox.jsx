@@ -1,4 +1,4 @@
-export default function NotificationInbox({ notifications, onAction, onDismiss, onClose }) {
+export default function NotificationInbox({ notifications, onGoTo, onDismiss, onClose }) {
   return (
     <div className="notification-inbox">
       <div className="notification-inbox__header">
@@ -13,7 +13,12 @@ export default function NotificationInbox({ notifications, onAction, onDismiss, 
           <li key={n.id}>
             <span>🟡 {n.greenhouseName}: {n.message}</span>
             <div>
-              <button onClick={() => onAction(n.id)}>조치</button>
+              <button
+                className="notification-inbox__go"
+                onClick={() => onGoTo(n.greenhouseId)}
+              >
+                조치하러 가기
+              </button>
               <button onClick={() => onDismiss(n.id)}>✕</button>
             </div>
           </li>

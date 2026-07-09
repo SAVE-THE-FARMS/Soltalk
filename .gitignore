@@ -23,3 +23,6 @@ build/
 
 # --- Claude Code 작업용 스크래치 파일 ---
 .superpowers/
+
+# --- Playwright MCP 산출물 ---
+.playwright-mcp/

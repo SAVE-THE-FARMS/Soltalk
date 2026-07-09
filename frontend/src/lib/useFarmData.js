@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { dismissAlert, getAlerts, getState, resetDemo, runAlertAction } from "../api";
+import { dismissAlert, getAlerts, getState, resetDemo, runAlertAction, setAutoMode } from "../api";
 import { INITIAL_HISTORY_LOG, INITIAL_PRODUCTION } from "./mockData";
 import { SEVERITY_ORDER } from "./labels";
 
@@ -10,12 +10,19 @@ function joinGreenhousesWithAlerts(greenhouses, alerts) {
     return {
       id: gh.id,
       name: gh.name,
-      status: gh.status,
+      status: gh.status, // 실제 습도 기준 상태 (임계값 설명 등 정확한 수치용)
+      // 경고가 방치되면 alert.escalated 가 true 가 되는데, 카드가 여전히
+      // "경고"만 보여주면 상단 위험 배너와 모순돼 보인다(실측 확인) — 카드
+      // 색/배지는 escalated 도 함께 반영해서 위험처럼 보이게 한다.
+      escalated: alert?.escalated ?? false,
       temperature: gh.temperature,
       humidity: gh.humidity,
       devices: gh.devices,
+      auto: gh.auto,
       reason: alert?.message ?? null,
-      activeAlert: alert ? { id: alert.id, action: alert.action, message: alert.message } : null,
+      activeAlert: alert
+        ? { id: alert.id, action: alert.action, message: alert.message, auto: alert.auto }
+        : null,
     };
   });
 }
@@ -80,6 +87,14 @@ export function useFarmData() {
     await refresh();
   }, [refresh]);
 
+  const toggleAutoMode = useCallback(
+    async (greenhouseId, enabled) => {
+      await setAutoMode(greenhouseId, enabled);
+      await refresh();
+    },
+    [refresh]
+  );
+
   return {
     greenhouses,
     notifications,
@@ -91,5 +106,6 @@ export function useFarmData() {
     runAction,
     dismiss,
     resetAll,
+    toggleAutoMode,
   };
 }

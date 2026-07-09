@@ -54,3 +54,11 @@ export async function dismissAlert(alertId) {
 export async function resetDemo() {
   return requestJson("/api/reset", { method: "POST" });
 }
+
+export async function setAutoMode(greenhouseId, enabled) {
+  return requestJson(`/api/greenhouses/${greenhouseId}/auto-mode`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+}

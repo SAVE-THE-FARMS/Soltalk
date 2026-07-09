@@ -110,6 +110,47 @@ def test_get_state_detail_for_unknown_greenhouse_is_404():
     assert resp.status_code == 404
 
 
+def test_get_state_includes_auto_flag_defaulting_false():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.get("/api/state")
+
+    assert all(g["auto"] is False for g in resp.json()["greenhouses"])
+
+
+def test_set_auto_mode_enables_and_reflects_in_state():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post("/api/greenhouses/2/auto-mode", json={"enabled": True})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"greenhouse_id": 2, "auto": True}
+    states = {g["id"]: g for g in client.get("/api/state").json()["greenhouses"]}
+    assert states[2]["auto"] is True
+    assert states[1]["auto"] is False
+    assert client.get("/api/state/2").json()["auto"] is True
+
+
+def test_set_auto_mode_on_unknown_greenhouse_is_404():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post("/api/greenhouses/999/auto-mode", json={"enabled": True})
+
+    assert resp.status_code == 404
+
+
+def test_auto_mode_resets_on_demo_reset():
+    client = TestClient(server.app)
+    client.post("/api/greenhouses/2/auto-mode", json={"enabled": True})
+
+    client.post("/api/reset")
+
+    assert client.get("/api/state/2").json()["auto"] is False
+
+
 def test_get_alerts_lists_active_alerts():
     _reset_all()
     client = TestClient(server.app)

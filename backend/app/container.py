@@ -43,17 +43,22 @@ class AppContainer:
         self.greenhouse_service = GreenhouseService(self.iot_by_greenhouse, GREENHOUSES, MOCK_DATA)
         self.alert_service = AlertService(self.greenhouse_service)
         self.sessions = SessionStore()
-        self.chat_agent = ChatAgent(iot=self.iot_by_greenhouse[ChatAgent.CHAT_GREENHOUSE_ID])
+        self.chat_agent = ChatAgent(
+            iot_by_greenhouse=self.iot_by_greenhouse,
+            greenhouse_names={gid: record["name"] for gid, record in GREENHOUSES.items()},
+            status_provider=self.greenhouse_service.get_dashboard,
+        )
         self.transcription = TranscriptionService()
 
     @property
     def chat_iot(self) -> IoTAdapter:
-        """챗봇이 제어하는 온실(1번)의 어댑터."""
-        return self.iot_by_greenhouse[ChatAgent.CHAT_GREENHOUSE_ID]
+        """온실 지정 없는 챗 명령의 기본 대상(1번) 어댑터."""
+        return self.iot_by_greenhouse[ChatAgent.DEFAULT_GREENHOUSE_ID]
 
     def reset_all(self) -> None:
         """리허설/재시연용 전체 초기화."""
         for adapter in self.iot_by_greenhouse.values():
             adapter.reset()
+        self.greenhouse_service.reset()
         self.sessions.reset()
         self.alert_service.reset()
