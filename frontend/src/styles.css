@@ -173,6 +173,7 @@ body {
   cursor: pointer;
 }
 .alert-banner--ok { background: none; color: #2e7d32; text-align: center; cursor: default; font-weight: 500; }
+.alert-banner--recovering { background: none; color: #4a6fa5; text-align: center; cursor: default; font-weight: 500; }
 .alert-banner--warning { background: #fff8e1; color: #8a6d00; }
 .alert-banner--critical { background: #ffebee; color: #b71c1c; }
 .alert-banner-list { display: flex; flex-direction: column; }

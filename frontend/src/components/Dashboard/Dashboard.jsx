@@ -15,7 +15,11 @@ export default function Dashboard({ farm, onSelectGreenhouse, onReset }) {
       <DemoControls onReset={onReset} />
       {farm.loading && <p className="dashboard__status">불러오는 중...</p>}
       {farm.error && <p className="dashboard__status dashboard__status--error">{farm.error}</p>}
-      <AlertBanner notifications={farm.notifications} onSelect={onSelectGreenhouse} />
+      <AlertBanner
+        notifications={farm.notifications}
+        greenhouses={farm.greenhouses}
+        onSelect={onSelectGreenhouse}
+      />
       <div className="dashboard__grid">
         {sorted.map((gh) => (
           <GreenhouseCard key={gh.id} greenhouse={gh} onClick={onSelectGreenhouse} />
