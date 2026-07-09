@@ -20,6 +20,7 @@ export default function App() {
   function handleChangeView(nextView) {
     setSelectedGreenhouseId(null);
     setView(nextView);
+    if (nextView === "dashboard") farm.refresh();
   }
 
   function handleAction(alertId) {
