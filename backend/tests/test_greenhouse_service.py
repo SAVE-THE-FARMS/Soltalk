@@ -128,7 +128,10 @@ def test_env_values_come_from_adapter_simulation_when_available():
 # 히스토리에 쌓아야 한다 (정적 seed 뒤에 이어붙임).
 
 
-def test_detail_appends_live_humidity_sample():
+def test_detail_appends_live_humidity_and_temperature_sample():
+    """온도 그래프도 그리려면 습도뿐 아니라 온도도 같이 기록해야 한다.
+    (기존 seed 데이터엔 온도가 없음 — todo/FRONTEND_통합_필수.md 4절에 이미
+    알려진 갭. 라이브 샘플부터는 온도도 채운다.)"""
     service, _ = _service()
     seed_len = len(GREENHOUSES[2]["history"])
 
@@ -136,7 +139,7 @@ def test_detail_appends_live_humidity_sample():
 
     assert len(detail["history"]) == seed_len + 1
     last = detail["history"][-1]
-    assert last == {"timestamp": FIXED_NOW.isoformat(), "humidity": 82}
+    assert last == {"timestamp": FIXED_NOW.isoformat(), "humidity": 82, "temperature": 24.0}
 
 
 def test_detail_does_not_resample_within_min_interval():

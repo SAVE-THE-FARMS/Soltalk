@@ -98,7 +98,7 @@ class GreenhouseService:
         now = now or datetime.now()
         env = self._env_values_for(greenhouse_id)
         status = self._status_for(env["humidity"])
-        self._record_sample(greenhouse_id, env["humidity"], now)
+        self._record_sample(greenhouse_id, env["humidity"], env["temperature"], now)
 
         reason = None
         recommended_action = None
@@ -120,11 +120,13 @@ class GreenhouseService:
             "history": list(self._history[greenhouse_id]),
         }
 
-    def _record_sample(self, greenhouse_id: int, humidity: float, now: datetime) -> None:
+    def _record_sample(
+        self, greenhouse_id: int, humidity: float, temperature: float, now: datetime
+    ) -> None:
         last = self._last_sample_at.get(greenhouse_id)
         if last is not None and now - last < self.SAMPLE_MIN_INTERVAL:
             return
         self._last_sample_at[greenhouse_id] = now
         history = self._history[greenhouse_id]
-        history.append({"timestamp": now.isoformat(), "humidity": humidity})
+        history.append({"timestamp": now.isoformat(), "humidity": humidity, "temperature": temperature})
         del history[: -self.HISTORY_MAX]

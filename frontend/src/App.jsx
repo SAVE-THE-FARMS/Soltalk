@@ -89,6 +89,7 @@ export default function App() {
             greenhouse={selectedGreenhouse}
             onBack={() => setSelectedGreenhouseId(null)}
             onAction={handleAction}
+            onToggleAuto={farm.toggleAutoMode}
           />
         ) : (
           <Dashboard
