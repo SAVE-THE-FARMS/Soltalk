@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sendMessage, transcribeAudio } from "../api";
 import { useRecorder } from "../lib/useRecorder";
 
@@ -7,6 +7,11 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [micError, setMicError] = useState("");
   const nextIdRef = useRef(0);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [messages]);
 
   const { isRecording, elapsedSeconds, start, stop } = useRecorder({
     onStop: async (blob) => {
@@ -83,6 +88,7 @@ export default function ChatScreen() {
             </div>
           );
         })}
+        <div ref={chatEndRef} />
       </div>
 
       {micError && <p className="mic-error">{micError}</p>}

@@ -68,6 +68,10 @@ body {
 .msg.bot.action { background: #eaf7ea; border-color: #bfe3bf; }
 .action-check { margin-right: 2px; }
 
+/* .app 은 높이가 뷰포트로 고정돼 있는데(height: 100vh), 이 규칙이 없으면
+   .screen 은 flex 아이템 기본값(content 크기)으로 자라서 내부(.chat 등)가
+   자체 스크롤되는 대신 body 전체가 길어져 버린다. */
+.screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .screen.is-hidden { display: none; }
 
 .top-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
