@@ -20,3 +20,6 @@ build/
 
 # --- 격리 작업용 워크트리 ---
 .worktrees/
+
+# --- Playwright MCP 산출물 ---
+.playwright-mcp/

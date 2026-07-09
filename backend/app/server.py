@@ -50,9 +50,13 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    reply: str  # 자연어 응답 (예: "차광막을 닫았어요.")
+    reply: str  # 자연어 응답 (예: "1번 온실 차광막을 닫았어요.")
     actions_taken: list[dict] = []
-    updated_state: dict = {}
+    updated_state: dict = {}  # 온실별 장비 상태 {"1": {...}, "2": {...}, "3": {...}}
+
+
+def _all_device_states() -> dict:
+    return {gid: dict(adapter.state) for gid, adapter in container.iot_by_greenhouse.items()}
 
 
 @app.get("/health")
@@ -71,14 +75,14 @@ def chat(req: ChatRequest) -> ChatResponse:
     except Exception:
         logger.exception("chat_agent.handle 처리 실패")
         return ChatResponse(
-            reply=FRIENDLY_ERROR_REPLY, actions_taken=[], updated_state=dict(container.chat_iot.state)
+            reply=FRIENDLY_ERROR_REPLY, actions_taken=[], updated_state=_all_device_states()
         )
 
     container.sessions.append_turn(session_id, req.message, result["reply"])
     return ChatResponse(
         reply=result["reply"],
         actions_taken=result["actions_taken"],
-        updated_state=dict(container.chat_iot.state),
+        updated_state=_all_device_states(),
     )
 
 
@@ -96,9 +100,16 @@ async def transcribe(audio: UploadFile = File(...)):
     return {"text": text}
 
 
+class AutoModeRequest(BaseModel):
+    enabled: bool  # True 면 이 온실은 경고/위험 시 사람 개입 없이 자동으로 조치됨
+
+
 @app.get("/api/state")
 def get_state():
-    return {"greenhouses": container.greenhouse_service.get_dashboard()}
+    states = container.greenhouse_service.get_dashboard()
+    for s in states:
+        s["auto"] = container.alert_service.is_auto_mode(s["id"])
+    return {"greenhouses": states}
 
 
 @app.get("/api/state/{greenhouse_id}")
@@ -106,7 +117,16 @@ def get_state_detail(greenhouse_id: int):
     detail = container.greenhouse_service.get_detail(greenhouse_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="온실을 찾을 수 없어요.")
+    detail["auto"] = container.alert_service.is_auto_mode(greenhouse_id)
     return detail
+
+
+@app.post("/api/greenhouses/{greenhouse_id}/auto-mode")
+def set_auto_mode(greenhouse_id: int, req: AutoModeRequest):
+    """온실별 자동 제어 모드 켜기/끄기. 켜면 경고/위험 시 대시보드 조회 때마다 자동 조치."""
+    if not container.alert_service.set_auto_mode(greenhouse_id, req.enabled):
+        raise HTTPException(status_code=404, detail="온실을 찾을 수 없어요.")
+    return {"greenhouse_id": greenhouse_id, "auto": req.enabled}
 
 
 @app.get("/api/alerts")

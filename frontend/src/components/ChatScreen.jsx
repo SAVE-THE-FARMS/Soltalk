@@ -14,10 +14,10 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [micError, setMicError] = useState("");
   const nextIdRef = useRef(0);
-  const bottomRef = useRef(null);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const { isRecording, elapsedSeconds, start, stop } = useRecorder({
@@ -108,7 +108,7 @@ export default function ChatScreen() {
             </div>
           );
         })}
-        <div ref={bottomRef} />
+        <div ref={chatEndRef} />
       </div>
 
       {micError && <p className="mic-error">{micError}</p>}

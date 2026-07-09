@@ -10,7 +10,7 @@ smartfarm_api_spec.md 1.2 (/api/state, /api/state/{id}) 대응.
 status 판정 (습도 기준): >=90 critical / >=80 warning / else normal
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..iot.base import IoTAdapter
 
@@ -18,6 +18,9 @@ from ..iot.base import IoTAdapter
 class GreenhouseService:
     HUMIDITY_WARNING_THRESHOLD = 80
     HUMIDITY_CRITICAL_THRESHOLD = 90
+    # 상세 조회 시 라이브 습도 샘플링: 그래프가 실시간 변화를 보여주게 한다
+    HISTORY_MAX = 12  # seed + 라이브 샘플 합쳐 최근 N개만 유지
+    SAMPLE_MIN_INTERVAL = timedelta(seconds=3)
 
     def __init__(
         self,
@@ -28,6 +31,15 @@ class GreenhouseService:
         self._iot_by_id = iot_by_id
         self._greenhouses = greenhouses
         self._sensor_data = sensor_data
+        self._seed_history()
+
+    def _seed_history(self) -> None:
+        self._history = {gid: list(record["history"]) for gid, record in self._greenhouses.items()}
+        self._last_sample_at: dict[int, datetime] = {}
+
+    def reset(self) -> None:
+        """리허설/재시연용 — 라이브 샘플을 버리고 정적 seed 히스토리로 복원."""
+        self._seed_history()
 
     @property
     def greenhouse_ids(self) -> list[int]:
@@ -83,9 +95,10 @@ class GreenhouseService:
         if greenhouse_id not in self._greenhouses:
             return None
 
-        record = self._greenhouses[greenhouse_id]
+        now = now or datetime.now()
         env = self._env_values_for(greenhouse_id)
         status = self._status_for(env["humidity"])
+        self._record_sample(greenhouse_id, env["humidity"], env["temperature"], now)
 
         reason = None
         recommended_action = None
@@ -104,5 +117,16 @@ class GreenhouseService:
             "reason": reason,
             "recommended_action": recommended_action,
             "current_values": env,
-            "history": record["history"],
+            "history": list(self._history[greenhouse_id]),
         }
+
+    def _record_sample(
+        self, greenhouse_id: int, humidity: float, temperature: float, now: datetime
+    ) -> None:
+        last = self._last_sample_at.get(greenhouse_id)
+        if last is not None and now - last < self.SAMPLE_MIN_INTERVAL:
+            return
+        self._last_sample_at[greenhouse_id] = now
+        history = self._history[greenhouse_id]
+        history.append({"timestamp": now.isoformat(), "humidity": humidity, "temperature": temperature})
+        del history[: -self.HISTORY_MAX]

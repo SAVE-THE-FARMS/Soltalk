@@ -6,7 +6,7 @@ get_detail(id, now): {"id","status","reason","recommended_action","current_value
 status: humidity >= 90 -> "critical", >= 80 -> "warning", else "normal"
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -121,3 +121,61 @@ def test_env_values_come_from_adapter_simulation_when_available():
     assert by_id[2]["humidity"] == pytest.approx(70.0)  # 시뮬레이션 값 (정적 82 아님)
     assert by_id[2]["status"] == "normal"               # 70% → 경고 아님
     assert by_id[3]["humidity"] == 55                    # Mock 온실은 기존 정적 값 유지
+
+
+# --- 상세 조회 시 라이브 습도 히스토리 샘플링 ---
+# 그래프가 "최근 습도 추이"를 실제로 보여주려면 get_detail 이 현재 습도를
+# 히스토리에 쌓아야 한다 (정적 seed 뒤에 이어붙임).
+
+
+def test_detail_appends_live_humidity_and_temperature_sample():
+    """온도 그래프도 그리려면 습도뿐 아니라 온도도 같이 기록해야 한다.
+    (기존 seed 데이터엔 온도가 없음 — todo/FRONTEND_통합_필수.md 4절에 이미
+    알려진 갭. 라이브 샘플부터는 온도도 채운다.)"""
+    service, _ = _service()
+    seed_len = len(GREENHOUSES[2]["history"])
+
+    detail = service.get_detail(2, now=FIXED_NOW)
+
+    assert len(detail["history"]) == seed_len + 1
+    last = detail["history"][-1]
+    assert last == {"timestamp": FIXED_NOW.isoformat(), "humidity": 82, "temperature": 24.0}
+
+
+def test_detail_does_not_resample_within_min_interval():
+    service, _ = _service()
+    seed_len = len(GREENHOUSES[2]["history"])
+
+    service.get_detail(2, now=FIXED_NOW)
+    detail = service.get_detail(2, now=FIXED_NOW + timedelta(seconds=1))
+
+    assert len(detail["history"]) == seed_len + 1  # 1초 뒤 재조회는 샘플 추가 안 함
+
+
+def test_detail_history_is_capped():
+    service, _ = _service()
+
+    detail = None
+    for i in range(GreenhouseService.HISTORY_MAX + 5):
+        detail = service.get_detail(2, now=FIXED_NOW + timedelta(seconds=3 * i))
+
+    assert len(detail["history"]) == GreenhouseService.HISTORY_MAX
+
+
+def test_reset_restores_seed_history():
+    service, _ = _service()
+    service.get_detail(2, now=FIXED_NOW)
+
+    service.reset()
+    detail = service.get_detail(2, now=FIXED_NOW)
+
+    # 리셋 후엔 seed + 방금 샘플 1개만 남는다
+    assert len(detail["history"]) == len(GREENHOUSES[2]["history"]) + 1
+
+
+def test_detail_sampling_does_not_mutate_static_record():
+    service, _ = _service()
+
+    service.get_detail(2, now=FIXED_NOW)
+
+    assert len(GREENHOUSES[2]["history"]) == 3  # 원본 정적 데이터는 그대로
