@@ -322,10 +322,6 @@ body {
 .greenhouse-detail__times span { font-size: 13px; }
 .chart-legend { font-size: 13px; }
 
-.app {
-  overflow-x: hidden;
-}
-
 @media (min-width: 600px) {
   .app {
     max-width: 640px;
