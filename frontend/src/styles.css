@@ -66,6 +66,7 @@ body {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 8px;
+  font-size: 16px;
 }
 .composer button {
   padding: 10px 14px;
@@ -303,4 +304,30 @@ body {
   padding: 8px 14px;
   font-size: 14px;
   cursor: pointer;
+}
+
+/* 모바일 반응형 폴리시 */
+.composer button,
+.top-nav__badge,
+.critical-banner__actions button,
+.notification-inbox button,
+.quick-reply {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.demo-controls__btn { font-size: 13px; }
+.history-timeline li { font-size: 14px; }
+.top-nav__badge { font-size: 13px; }
+.greenhouse-detail__times span { font-size: 13px; }
+.chart-legend { font-size: 13px; }
+
+.app {
+  overflow-x: hidden;
+}
+
+@media (min-width: 600px) {
+  .app {
+    max-width: 640px;
+  }
 }
