@@ -39,6 +39,13 @@ export default function App() {
     farm.dismiss(alertId);
   }
 
+  // 알림함 "조치하러 가기" — 장비를 바로 조작하지 않고 해당 온실 브리핑으로 이동
+  function handleGoToGreenhouse(greenhouseId) {
+    setInboxOpen(false);
+    setView("dashboard");
+    setSelectedGreenhouseId(greenhouseId);
+  }
+
   function handleReset() {
     farm.resetAll();
   }
@@ -68,7 +75,7 @@ export default function App() {
       {inboxOpen && (
         <NotificationInbox
           notifications={warningNotifications}
-          onAction={handleAction}
+          onGoTo={handleGoToGreenhouse}
           onDismiss={handleDismiss}
           onClose={() => setInboxOpen(false)}
         />

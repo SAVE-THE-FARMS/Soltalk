@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getGreenhouseDetail } from "../api";
 import StatusBadge from "./ui/StatusBadge";
+import { ACTION_BRIEFING, HUMIDITY_THRESHOLD, STATUS_HEADLINE } from "../lib/labels";
 
 function buildLinePath(values, width, height) {
   if (values.length === 0) return "";
@@ -28,9 +29,67 @@ function pickTimeLabels(history) {
   return [history[0], history[Math.floor(history.length / 2)], history[history.length - 1]];
 }
 
+// 경고/위험 상태 온실의 브리핑 블록: 상황 → 위험 → 조치 방법 → 조치 버튼
+function Briefing({ greenhouse, onAction }) {
+  const [acting, setActing] = useState(false);
+
+  const headline = STATUS_HEADLINE[greenhouse.status];
+  const threshold = HUMIDITY_THRESHOLD[greenhouse.status];
+  const action = greenhouse.activeAlert?.action;
+  const briefing = action ? ACTION_BRIEFING[`${action.device}:${action.action}`] : null;
+  // 조치가 이미 실행됐으면(알림 사라짐 + 창문 열림) 회복 진행 안내
+  const recovering = !greenhouse.activeAlert && greenhouse.devices.window === "open";
+
+  async function handleClick() {
+    setActing(true);
+    try {
+      await onAction(greenhouse.activeAlert.id);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  return (
+    <div className={`briefing briefing--${greenhouse.status}`}>
+      <p className="briefing__headline">
+        {headline.icon} 습도 {greenhouse.humidity}% — {headline.text}
+      </p>
+
+      <div className="briefing__section">
+        <p className="briefing__title">📋 현재 상황</p>
+        <p>
+          습도가 <strong>{greenhouse.humidity}%</strong>로 정상 범위({threshold}% 미만)를
+          넘었어요. 온도는 {greenhouse.temperature}℃예요.
+        </p>
+      </div>
+
+      {briefing && (
+        <>
+          <div className="briefing__section">
+            <p className="briefing__title">⚠️ 이대로 두면</p>
+            <p>{briefing.risk}</p>
+          </div>
+          <div className="briefing__section">
+            <p className="briefing__title">💡 조치 방법</p>
+            <p>{briefing.remedy}</p>
+          </div>
+          <button className="briefing__cta" onClick={handleClick} disabled={acting}>
+            {acting ? "조치하는 중..." : `${briefing.buttonIcon} ${action.label}`}
+          </button>
+        </>
+      )}
+
+      {recovering && (
+        <p className="briefing__recovering">
+          ✅ 조치 완료 — 습도가 내려가는 중이에요. 아래 그래프에서 확인할 수 있어요.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
   const [detail, setDetail] = useState(null);
-  const [toast, setToast] = useState("");
   const width = 260;
   const height = 80;
 
@@ -47,12 +106,9 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
   const history = detail?.history ?? [];
   const humidityPath = buildLinePath(history.map((h) => h.humidity), width, height);
 
-  async function handleAction() {
-    const label = greenhouse.activeAlert.action.label;
-    await onAction(greenhouse.activeAlert.id);
+  async function handleAction(alertId) {
+    await onAction(alertId);
     load(); // 다음 폴링(3초)을 기다리지 않고 그래프에 바로 반영
-    setToast(`${label} 완료했어요.`);
-    setTimeout(() => setToast(""), 2000);
   }
 
   return (
@@ -65,14 +121,10 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
         <h2>{greenhouse.name}</h2>
         <StatusBadge status={greenhouse.status} />
       </div>
-      {greenhouse.reason && <p className="greenhouse-detail__cause">{greenhouse.reason}</p>}
 
-      {greenhouse.activeAlert && (
-        <button className="greenhouse-detail__action" onClick={handleAction}>
-          [{greenhouse.activeAlert.action.label}]
-        </button>
+      {greenhouse.status !== "normal" && (
+        <Briefing greenhouse={greenhouse} onAction={handleAction} />
       )}
-      {toast && <p className="greenhouse-detail__toast">{toast}</p>}
 
       <div className="greenhouse-detail__chart">
         <p>최근 습도 추이</p>
