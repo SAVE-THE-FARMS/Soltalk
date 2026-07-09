@@ -87,6 +87,7 @@ export function useFarmData() {
     historyLog,
     loading,
     error,
+    refresh,
     runAction,
     dismiss,
     resetAll,
