@@ -46,7 +46,8 @@ class ChatAgent:
         "센서/생산 데이터(온도/습도/생산량)를 물으면, 그때만 제공된 도구(control_device/read_data)를 "
         "호출해 실제로 처리하세요. "
         "장비를 조작한 뒤에는 몇 번 온실에 무엇을 했는지 확인해주는 문장으로 답하고, "
-        "지원하지 않는 장비/동작이면 무엇이 안 되는지 안내하세요.\n"
+        "지원하지 않는 장비/동작이면 무엇이 안 되는지 안내하세요. "
+        "도구 결과에 note 필드가 있으면 그 내용을 반드시 답변에 반영하세요.\n"
     )
 
     # 온실을 지정하지 않은 장비 조작 요청일 때 쓸 규칙. {target_hint} 는 코드가
@@ -274,7 +275,23 @@ class ChatAgent:
         if iot is None:
             return {"ok": False, "reason": "unknown_greenhouse", "greenhouse_id": greenhouse_id}
         if name == "control_device":
-            return {**iot.control(args["device"], args["action"]), "greenhouse_id": greenhouse_id}
+            was_alerting = self._is_alerting(greenhouse_id)
+            result = {**iot.control(args["device"], args["action"]), "greenhouse_id": greenhouse_id}
+            if result.get("ok") and was_alerting:
+                # 챗으로 경고 중인 온실을 조치하면 대시보드 알림/조치버튼이 습도가
+                # 내려가는 대로 조용히 사라진다 — 사용자가 왜 사라졌는지 모를 수
+                # 있어(실측 확인) 답변에서 미리 설명하도록 안내를 실어준다.
+                result["note"] = (
+                    "이 온실은 방금까지 경고/위험 상태였습니다. 이 조치로 습도가 내려가면 "
+                    "대시보드의 알림과 조치 버튼이 자동으로 사라집니다(=해결됐다는 뜻). "
+                    "답변에 이 사실을 한 문장으로 짧게 안내하세요."
+                )
+            return result
         if name == "read_data":
             return {**iot.read(args["target"]), "greenhouse_id": greenhouse_id}
         return {"ok": False, "reason": "unknown_tool"}
+
+    def _is_alerting(self, greenhouse_id: int) -> bool:
+        return any(
+            s["id"] == greenhouse_id and s["status"] != "normal" for s in self._status_provider()
+        )

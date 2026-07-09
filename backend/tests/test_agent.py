@@ -173,6 +173,74 @@ def test_control_routes_to_specified_greenhouse():
     assert iot_by_greenhouse[1].state["window"] == "closed"  # 다른 온실엔 영향 없음
 
 
+def test_control_success_on_alerting_greenhouse_notes_dashboard_will_clear():
+    """챗으로 경고 중인 온실을 조치하면, 대시보드 알림/조치버튼이 조용히 사라져서
+    사용자가 당황할 수 있다(실측 확인). 모델이 이걸 답변에 설명할 수 있게
+    tool 결과에 안내를 실어준다."""
+    captured = {}
+
+    class RecordingOpenAI(FakeOpenAI):
+        def _create(self, **kwargs):
+            captured.setdefault("calls", []).append(kwargs)
+            return super()._create(**kwargs)
+
+    tool_call = _tool_call(
+        "call1", "control_device", '{"device": "window", "action": "open", "greenhouse_id": 2}'
+    )
+
+    def status_with_warning():
+        return [
+            {"id": 1, "name": "1번 온실(토마토)", "status": "normal", "temperature": 24.0, "humidity": 60},
+            {"id": 2, "name": "2번 온실(딸기)", "status": "warning", "temperature": 24.0, "humidity": 82},
+        ]
+
+    agent = ChatAgent(
+        iot_by_greenhouse=_two_greenhouses(),
+        greenhouse_names=GREENHOUSE_NAMES,
+        status_provider=status_with_warning,
+        client=RecordingOpenAI(
+            [
+                _response(_message(tool_calls=[tool_call])),
+                _response(_message(content="2번 온실 창문을 열었어요. 습도가 내려가면 알림이 사라져요.")),
+            ]
+        ),
+    )
+
+    agent.handle("2번 온실 창문 열어줘")
+
+    tool_result_message = captured["calls"][1]["messages"][-1]
+    assert "사라" in tool_result_message["content"]
+
+
+def test_control_success_on_normal_greenhouse_has_no_clearing_note():
+    captured = {}
+
+    class RecordingOpenAI(FakeOpenAI):
+        def _create(self, **kwargs):
+            captured.setdefault("calls", []).append(kwargs)
+            return super()._create(**kwargs)
+
+    tool_call = _tool_call(
+        "call1", "control_device", '{"device": "shade", "action": "close", "greenhouse_id": 1}'
+    )
+    agent = ChatAgent(
+        iot_by_greenhouse=_two_greenhouses(),
+        greenhouse_names=GREENHOUSE_NAMES,
+        status_provider=_all_normal_status,
+        client=RecordingOpenAI(
+            [
+                _response(_message(tool_calls=[tool_call])),
+                _response(_message(content="1번 온실 차광막을 닫았어요.")),
+            ]
+        ),
+    )
+
+    agent.handle("1번 온실 차광막 닫아줘")
+
+    tool_result_message = captured["calls"][1]["messages"][-1]
+    assert "사라" not in tool_result_message["content"]
+
+
 def test_control_device_schema_requires_greenhouse_id():
     """온실 미지정 시 자동으로 1번에 적용하지 않고 모델이 되묻게 하려면
     greenhouse_id 가 선택이 아니라 필수 스키마여야 한다."""
