@@ -19,3 +19,12 @@ export async function sendMessage(message) {
     body: JSON.stringify({ message, session_id: getSessionId() }),
   });
 }
+
+export async function transcribeAudio(blob) {
+  const form = new FormData();
+  form.append("audio", blob, "recording.webm");
+  const res = await fetch(`${API_BASE}/api/transcribe`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`음성 인식 실패: ${res.status}`);
+  const data = await res.json();
+  return data.text;
+}

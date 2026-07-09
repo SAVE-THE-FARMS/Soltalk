@@ -1,10 +1,26 @@
 import { useRef, useState } from "react";
-import { sendMessage } from "../api";
+import { sendMessage, transcribeAudio } from "../api";
+import { useRecorder } from "../lib/useRecorder";
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState([]); // { id, role: "user"|"bot", text, pending?, success? }
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [micError, setMicError] = useState("");
   const nextIdRef = useRef(0);
+
+  const { isRecording, elapsedSeconds, start, stop } = useRecorder({
+    onStop: async (blob) => {
+      try {
+        const text = await transcribeAudio(blob);
+        setInput(text);
+      } catch (e) {
+        setMicError("음성 인식에 실패했어요. 다시 시도해주세요.");
+      }
+    },
+    onError: () => {
+      setMicError("마이크를 사용할 수 없어요. 브라우저 권한을 확인해주세요 (크롬 권장).");
+    },
+  });
 
   async function handleSend() {
     const text = input.trim();
@@ -42,8 +58,9 @@ export default function ChatScreen() {
   }
 
   function handleMic() {
-    // TODO(Task 2): MediaRecorder 기반 녹음으로 교체.
-    alert("음성 입력은 아직 미구현");
+    setMicError("");
+    if (isRecording) stop();
+    else start();
   }
 
   return (
@@ -68,8 +85,16 @@ export default function ChatScreen() {
         })}
       </div>
 
+      {micError && <p className="mic-error">{micError}</p>}
+
       <div className="composer">
-        <button onClick={handleMic} title="음성 입력">🎤</button>
+        <button
+          className={`mic-btn${isRecording ? " mic-btn--recording" : ""}`}
+          onClick={handleMic}
+          title="음성 입력"
+        >
+          {isRecording ? `⏹ ${elapsedSeconds}s` : "🎤"}
+        </button>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
