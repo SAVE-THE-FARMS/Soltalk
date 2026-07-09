@@ -210,3 +210,78 @@ def test_reset_restores_device_state():
 
     assert resp.status_code == 200
     assert client.get("/api/state").json()["greenhouses"][0]["devices"]["shade"] == "open"
+
+
+def test_realtime_session_returns_client_secret(monkeypatch):
+    monkeypatch.setattr(
+        server.container.realtime_sessions,
+        "create_session",
+        lambda: {"client_secret": "ek_test", "expires_at": 1234567890},
+    )
+    client = TestClient(server.app)
+
+    resp = client.post("/api/realtime/session")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"client_secret": "ek_test", "expires_at": 1234567890}
+
+
+def test_realtime_session_returns_502_when_openai_call_fails(monkeypatch):
+    def boom():
+        raise RuntimeError("openai down")
+
+    monkeypatch.setattr(server.container.realtime_sessions, "create_session", boom)
+    client = TestClient(server.app)
+
+    resp = client.post("/api/realtime/session")
+
+    assert resp.status_code == 502
+
+
+def test_tools_execute_runs_control_device():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={
+            "tool_name": "control_device",
+            "arguments": {"device": "shade", "action": "close", "greenhouse_id": 1},
+        },
+    )
+
+    assert resp.status_code == 200
+    result = resp.json()["result"]
+    assert result["ok"] is True
+    assert result["device"] == "shade"
+    assert result["state"] == "closed"
+    assert result["greenhouse_id"] == 1
+
+
+def test_tools_execute_read_data_defaults_to_greenhouse_1():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "read_data", "arguments": {"target": "temperature"}},
+    )
+
+    assert resp.status_code == 200
+    result = resp.json()["result"]
+    assert result["ok"] is True
+    assert result["greenhouse_id"] == 1
+
+
+def test_tools_execute_control_device_without_greenhouse_id_is_not_applied():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "control_device", "arguments": {"device": "shade", "action": "close"}},
+    )
+
+    assert resp.status_code == 200
+    result = resp.json()["result"]
+    assert result == {"ok": False, "reason": "missing_greenhouse_id"}
