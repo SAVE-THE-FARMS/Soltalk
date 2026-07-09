@@ -5,14 +5,16 @@ import HistoryTimeline from "./HistoryTimeline";
 import DemoControls from "./DemoControls";
 import { SEVERITY_ORDER } from "../../lib/labels";
 
-export default function Dashboard({ farm, onSelectGreenhouse, onReset, onEscalate }) {
+export default function Dashboard({ farm, onSelectGreenhouse, onReset }) {
   const sorted = [...farm.greenhouses].sort(
     (a, b) => SEVERITY_ORDER[b.status] - SEVERITY_ORDER[a.status]
   );
 
   return (
     <div className="dashboard">
-      <DemoControls onReset={onReset} onEscalate={onEscalate} />
+      <DemoControls onReset={onReset} />
+      {farm.loading && <p className="dashboard__status">불러오는 중...</p>}
+      {farm.error && <p className="dashboard__status dashboard__status--error">{farm.error}</p>}
       <AlertBanner notifications={farm.notifications} onSelect={onSelectGreenhouse} />
       <div className="dashboard__grid">
         {sorted.map((gh) => (

@@ -11,53 +11,30 @@ export default function App() {
   const [view, setView] = useState("chat");
   const [selectedGreenhouseId, setSelectedGreenhouseId] = useState(null);
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState([]);
   const hasInteractedRef = useRef(false);
   const farm = useFarmData();
 
-  const criticalNotifications = farm.notifications.filter(
-    (n) => n.severity === "critical" && !dismissedIds.includes(n.greenhouseId)
-  );
-  const warningNotifications = farm.notifications.filter(
-    (n) => n.severity === "warning" && !dismissedIds.includes(n.greenhouseId)
-  );
+  const criticalNotifications = farm.notifications.filter((n) => n.level === "critical");
+  const warningNotifications = farm.notifications.filter((n) => n.level === "warning");
 
   function handleChangeView(nextView) {
     setSelectedGreenhouseId(null);
     setView(nextView);
   }
 
-  function handleAction(greenhouseId) {
-    const gh = farm.greenhouses.find((g) => g.id === greenhouseId);
-    if (gh?.recommendedAction) {
-      farm.controlDevice(
-        greenhouseId,
-        gh.recommendedAction.device,
-        gh.recommendedAction.action
-      );
-    }
+  function handleAction(alertId) {
+    farm.runAction(alertId);
   }
 
-  function handleDismiss(greenhouseId) {
-    setDismissedIds((prev) => [...prev, greenhouseId]);
+  function handleDismiss(alertId) {
+    farm.dismiss(alertId);
   }
 
   function handleReset() {
-    farm.resetDemo();
-    setDismissedIds([]);
+    farm.resetAll();
   }
 
-  function handleEscalate() {
-    const warningGreenhouse = farm.greenhouses.find((gh) => gh.status === "warning");
-    farm.escalateDemo();
-    if (warningGreenhouse) {
-      setDismissedIds((prev) => prev.filter((id) => id !== warningGreenhouse.id));
-    }
-  }
-
-  const selectedGreenhouse = farm.greenhouses.find(
-    (gh) => gh.id === selectedGreenhouseId
-  );
+  const selectedGreenhouse = farm.greenhouses.find((gh) => gh.id === selectedGreenhouseId);
 
   return (
     <div
@@ -95,14 +72,13 @@ export default function App() {
           <GreenhouseDetail
             greenhouse={selectedGreenhouse}
             onBack={() => setSelectedGreenhouseId(null)}
-            onControlDevice={farm.controlDevice}
+            onAction={handleAction}
           />
         ) : (
           <Dashboard
             farm={farm}
             onSelectGreenhouse={setSelectedGreenhouseId}
             onReset={handleReset}
-            onEscalate={handleEscalate}
           />
         )}
       </div>

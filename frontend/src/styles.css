@@ -303,3 +303,6 @@ body {
 .top-nav__tab {
   min-height: 44px;
 }
+
+.dashboard__status { text-align: center; color: #888; font-size: 13px; margin: 8px 0; }
+.dashboard__status--error { color: #b71c1c; }
