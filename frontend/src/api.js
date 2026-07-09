@@ -28,3 +28,29 @@ export async function transcribeAudio(blob) {
   const data = await res.json();
   return data.text;
 }
+
+export async function getState() {
+  const { greenhouses } = await requestJson("/api/state");
+  return greenhouses;
+}
+
+export async function getGreenhouseDetail(id) {
+  return requestJson(`/api/state/${id}`);
+}
+
+export async function getAlerts() {
+  const { alerts } = await requestJson("/api/alerts");
+  return alerts;
+}
+
+export async function runAlertAction(alertId) {
+  return requestJson(`/api/alerts/${alertId}/action`, { method: "POST" });
+}
+
+export async function dismissAlert(alertId) {
+  return requestJson(`/api/alerts/${alertId}/dismiss`, { method: "POST" });
+}
+
+export async function resetDemo() {
+  return requestJson("/api/reset", { method: "POST" });
+}

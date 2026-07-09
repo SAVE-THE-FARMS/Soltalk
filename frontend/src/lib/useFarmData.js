@@ -1,100 +1,94 @@
-import { useCallback, useState } from "react";
-import {
-  INITIAL_GREENHOUSES,
-  INITIAL_HISTORY_LOG,
-  INITIAL_PRODUCTION,
-} from "./mockData";
-import { ACTION_LABEL, DEVICE_LABEL, SEVERITY_ORDER } from "./labels";
+import { useCallback, useEffect, useState } from "react";
+import { dismissAlert, getAlerts, getState, resetDemo, runAlertAction } from "../api";
+import { INITIAL_HISTORY_LOG, INITIAL_PRODUCTION } from "./mockData";
+import { SEVERITY_ORDER } from "./labels";
 
-const STATUS_STEP_DOWN = { critical: "warning", warning: "normal" };
+function joinGreenhousesWithAlerts(greenhouses, alerts) {
+  const alertByGreenhouseId = new Map(alerts.map((a) => [a.greenhouse_id, a]));
+  return greenhouses.map((gh) => {
+    const alert = alertByGreenhouseId.get(gh.id);
+    return {
+      id: gh.id,
+      name: gh.name,
+      status: gh.status,
+      temperature: gh.temperature,
+      humidity: gh.humidity,
+      devices: gh.devices,
+      reason: alert?.message ?? null,
+      activeAlert: alert ? { id: alert.id, action: alert.action, message: alert.message } : null,
+    };
+  });
+}
 
-function formatNow() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
+function toNotifications(alerts, greenhouses) {
+  const nameById = new Map(greenhouses.map((gh) => [gh.id, gh.name]));
+  return [...alerts]
+    .sort((a, b) => SEVERITY_ORDER[b.level] - SEVERITY_ORDER[a.level])
+    .map((a) => ({
+      id: a.id,
+      level: a.level,
+      greenhouseId: a.greenhouse_id,
+      greenhouseName: nameById.get(a.greenhouse_id) ?? `${a.greenhouse_id}번 온실`,
+      message: a.message,
+      action: a.action,
+    }));
 }
 
 export function useFarmData() {
-  const [greenhouses, setGreenhouses] = useState(INITIAL_GREENHOUSES);
+  const [greenhouses, setGreenhouses] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [production] = useState(INITIAL_PRODUCTION);
-  const [historyLog, setHistoryLog] = useState(INITIAL_HISTORY_LOG);
+  const [historyLog] = useState(INITIAL_HISTORY_LOG);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const controlDevice = useCallback(
-    (greenhouseId, device, action) => {
-      const target = greenhouses.find((gh) => gh.id === greenhouseId);
-      if (!target) return;
+  const refresh = useCallback(async () => {
+    try {
+      const [rawGreenhouses, rawAlerts] = await Promise.all([getState(), getAlerts()]);
+      setGreenhouses(joinGreenhousesWithAlerts(rawGreenhouses, rawAlerts));
+      setNotifications(toNotifications(rawAlerts, rawGreenhouses));
+      setError(null);
+    } catch (e) {
+      setError("대시보드 데이터를 불러오지 못했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      const matchesRecommended =
-        target.recommendedAction &&
-        target.recommendedAction.device === device &&
-        target.recommendedAction.action === action;
-      const nextStatus = matchesRecommended
-        ? STATUS_STEP_DOWN[target.status] ?? target.status
-        : target.status;
-      const resolved = matchesRecommended && nextStatus === "normal";
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-      setGreenhouses((prev) =>
-        prev.map((gh) =>
-          gh.id === greenhouseId
-            ? {
-                ...gh,
-                devices: { ...gh.devices, [device]: action },
-                status: nextStatus,
-                cause: resolved ? null : gh.cause,
-                recommendedAction: resolved ? null : gh.recommendedAction,
-              }
-            : gh
-        )
-      );
-
-      setHistoryLog((prev) => [
-        {
-          time: formatNow(),
-          type: "manual",
-          text: `${target.name} ${DEVICE_LABEL[device]} ${
-            ACTION_LABEL[action] ?? action
-          }`,
-        },
-        ...prev,
-      ]);
+  const runAction = useCallback(
+    async (alertId) => {
+      await runAlertAction(alertId);
+      await refresh();
     },
-    [greenhouses]
+    [refresh]
   );
 
-  const resetDemo = useCallback(() => {
-    setGreenhouses(INITIAL_GREENHOUSES);
-    setHistoryLog(INITIAL_HISTORY_LOG);
-  }, []);
+  const dismiss = useCallback(
+    async (alertId) => {
+      await dismissAlert(alertId);
+      await refresh();
+    },
+    [refresh]
+  );
 
-  const escalateDemo = useCallback(() => {
-    setGreenhouses((prev) => {
-      const idx = prev.findIndex((gh) => gh.status === "warning");
-      if (idx === -1) return prev;
-      return prev.map((gh, i) =>
-        i === idx ? { ...gh, status: "critical" } : gh
-      );
-    });
-  }, []);
-
-  const notifications = greenhouses
-    .filter((gh) => gh.status !== "normal")
-    .sort((a, b) => SEVERITY_ORDER[b.status] - SEVERITY_ORDER[a.status])
-    .map((gh) => ({
-      id: gh.id,
-      severity: gh.status,
-      greenhouseId: gh.id,
-      greenhouseName: gh.name,
-      message: gh.cause,
-    }));
+  const resetAll = useCallback(async () => {
+    await resetDemo();
+    await refresh();
+  }, [refresh]);
 
   return {
     greenhouses,
+    notifications,
     production,
     historyLog,
-    notifications,
-    controlDevice,
-    resetDemo,
-    escalateDemo,
+    loading,
+    error,
+    runAction,
+    dismiss,
+    resetAll,
   };
 }
