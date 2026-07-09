@@ -2,13 +2,9 @@ import StatusBadge from "../ui/StatusBadge";
 import DeviceIcon from "../ui/DeviceIcon";
 
 export default function GreenhouseCard({ greenhouse, onClick }) {
-  const isCompact = greenhouse.status === "normal";
-
   return (
     <button
-      className={`greenhouse-card greenhouse-card--${greenhouse.status}${
-        isCompact ? " greenhouse-card--compact" : ""
-      }`}
+      className={`greenhouse-card greenhouse-card--${greenhouse.status}`}
       onClick={() => onClick?.(greenhouse.id)}
     >
       <div className="greenhouse-card__header">
