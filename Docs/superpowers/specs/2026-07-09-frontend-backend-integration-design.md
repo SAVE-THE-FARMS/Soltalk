@@ -46,11 +46,35 @@
   - **폴링 없음** — 데모 규모(단일 사용자, 3개 온실)에 실시간 폴링은 과함. 화면 진입·액션 시 refetch로 충분.
 - production(생산량 위젯)과 dashboard 하단 "처리 이력(HistoryTimeline)"은 백엔드에 대응 API가 없으므로 `mockData.js`의 정적 값을 그대로 유지 (변경 없음).
 
-### 데이터 모델 (백엔드 그대로 사용, 별도 매핑 레이어 없음)
+### 데이터 모델
+> (설계 수정: 처음엔 "매핑 레이어 없이 백엔드 필드명 그대로"로 정했으나, 기존 프론트 컴포넌트가 전부
+> camelCase(`greenhouseId`, `severity`, `recommendedAction`) 컨벤션이라 snake_case를 그대로 섞으면
+> 오히려 일관성이 깨지고 실수하기 쉬움. `useFarmData` 한 곳에서 백엔드 응답 → 프론트 camelCase 형태로
+> 얇게 변환하는 어댑터 역할을 하도록 수정. 컴포넌트는 여전히 하나의 일관된 형태만 본다.)
+
+`useFarmData`가 만들어내는 온실 객체 형태:
+```js
+{
+  id: 1,                 // 정수 (백엔드 그대로)
+  name: "1번 온실(토마토)",
+  status: "warning",
+  temperature: 24.0,
+  humidity: 82,
+  devices: { shade: "open", window: "closed", irrigation: "off" },
+  reason: "습도 82%, 임계값 80% 초과",              // 백엔드 detail.reason (구 cause)
+  activeAlert: { id: "gh2-humidity", action: { device, action, label }, message } | null,
+}
+```
+알림(notification) 객체 형태:
+```js
+{ id: "gh2-humidity", level: "warning", greenhouseId: 2, greenhouseName: "2번 온실(딸기)", message, action }
+```
+
 - 온실 `id`: 문자열(`"gh-1"`) → 정수(`1`)로 전환. 컴포넌트의 `key`/비교 로직 모두 정수 기준으로 통일.
-- `cause` → `reason`, `recommendedAction` → `recommended_action` — 프론트 컴포넌트가 백엔드 필드명을 그대로 사용하도록 수정(별도 alias 없음).
+- `cause` → `reason` (백엔드 detail 응답 필드명을 그대로 씀). `recommendedAction`은 이름은 유지하되 내용은 백엔드 `recommended_action`에서 매핑.
+- `severity` → `level` 로 통일 (알림 심각도 필드는 백엔드 용어를 따름 — `AlertBanner`/`CriticalBanner`/`NotificationInbox`/`App.jsx` 전부 이 이름으로 통일).
 - 알림 목록(`GET /api/alerts`)에는 `greenhouse_id`만 있고 이름이 없음 → `useFarmData`에서 온실 목록과 조인해 각 알림에 `greenhouseName`을 붙여서 내려준다.
-- 온실 상세 화면에서 "바로 조치" 버튼이 정확한 `alert_id`를 알아야 `POST /api/alerts/{id}/action`을 호출할 수 있음 → `useFarmData`가 온실별로 매칭되는 활성 알림을 조인해 `greenhouse.activeAlert = {id, action, message} | null` 형태로 함께 내려준다. `GreenhouseDetail`/`GreenhouseCard`/`CriticalBanner`/`NotificationInbox` 전부 이 조인된 데이터를 사용 (device/action 직접 지정 방식 제거).
+- 온실 상세 화면에서 "바로 조치" 버튼이 정확한 `alert_id`를 알아야 `POST /api/alerts/{id}/action`을 호출할 수 있음 → `useFarmData`가 온실별로 매칭되는 활성 알림을 조인해 `greenhouse.activeAlert = {id, action, message} | null` 형태로 함께 내려준다. `GreenhouseDetail`/`GreenhouseCard`/`CriticalBanner`/`NotificationInbox` 전부 이 조인된 데이터를 사용 (device/action 직접 지정 방식 제거, 항상 `activeAlert.id`로 액션/닫기 호출).
 - 추이 차트: 백엔드 `history`가 `{timestamp, humidity}`만 제공 → **온도 라인 제거**, 습도만 표시. 시간 라벨은 `timestamp`(ISO)에서 시:분만 추출해서 표시.
 
 ### 데모 컨트롤
