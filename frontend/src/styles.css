@@ -278,3 +278,12 @@ body {
   border-bottom: 1px solid #f0f0f0;
   font-size: 13px;
 }
+
+.display-face { font-family: "Fraunces", serif; }
+.data-face { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+.header-underline {
+  height: 3px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--color-sun), transparent);
+}

@@ -6,13 +6,13 @@ export default function ProductionWidget({ production }) {
     <div className="production-widget">
       <div>
         <span className="production-widget__label">오늘</span>
-        <span className="production-widget__value">
+        <span className="production-widget__value data-face">
           {production.today}{production.unit}
         </span>
       </div>
       <div>
         <span className="production-widget__label">이번주</span>
-        <span className="production-widget__value">
+        <span className="production-widget__value data-face">
           {production.week}{production.unit}
         </span>
       </div>
