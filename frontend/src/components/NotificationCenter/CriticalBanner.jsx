@@ -1,20 +1,24 @@
 import { useEffect, useRef } from "react";
 
-function playBeep() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.value = 880;
-  gain.gain.value = 0.15;
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.2);
-}
-
 export default function CriticalBanner({ notifications, onAction, onDismiss, canPlaySound }) {
   const playedIdsRef = useRef(new Set());
+  const audioContextRef = useRef(null);
+
+  function playBeep() {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.15;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  }
 
   useEffect(() => {
     if (!canPlaySound) return;
@@ -30,6 +34,8 @@ export default function CriticalBanner({ notifications, onAction, onDismiss, can
     });
   }, [notifications, canPlaySound]);
 
+  useEffect(() => () => audioContextRef.current?.close(), []);
+
   if (notifications.length === 0) return null;
 
   return (
@@ -38,11 +44,8 @@ export default function CriticalBanner({ notifications, onAction, onDismiss, can
         <div key={n.id} className="critical-banner">
           <span>🔴 {n.greenhouseName}: {n.message}</span>
           <div className="critical-banner__actions">
-            <button onClick={() => onAction(n.greenhouseId)}>바로 조치</button>
-            <button
-              className="critical-banner__dismiss"
-              onClick={() => onDismiss(n.greenhouseId)}
-            >
+            <button onClick={() => onAction(n.id)}>바로 조치</button>
+            <button className="critical-banner__dismiss" onClick={() => onDismiss(n.id)}>
               ✕
             </button>
           </div>

@@ -8,10 +8,10 @@ export default function AlertBanner({ notifications, onSelect }) {
       {notifications.map((n) => (
         <button
           key={n.id}
-          className={`alert-banner alert-banner--${n.severity}`}
+          className={`alert-banner alert-banner--${n.level}`}
           onClick={() => onSelect?.(n.greenhouseId)}
         >
-          {n.severity === "critical" ? "🔴" : "🟡"} {n.greenhouseName}: {n.message}
+          {n.level === "critical" ? "🔴" : "🟡"} {n.greenhouseName}: {n.message}
         </button>
       ))}
     </div>

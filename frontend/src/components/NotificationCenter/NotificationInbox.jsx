@@ -13,8 +13,8 @@ export default function NotificationInbox({ notifications, onAction, onDismiss, 
           <li key={n.id}>
             <span>🟡 {n.greenhouseName}: {n.message}</span>
             <div>
-              <button onClick={() => onAction(n.greenhouseId)}>조치</button>
-              <button onClick={() => onDismiss(n.greenhouseId)}>✕</button>
+              <button onClick={() => onAction(n.id)}>조치</button>
+              <button onClick={() => onDismiss(n.id)}>✕</button>
             </div>
           </li>
         ))}

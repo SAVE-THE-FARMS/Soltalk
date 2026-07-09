@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getGreenhouseDetail } from "../api";
 import StatusBadge from "./ui/StatusBadge";
 
 function buildLinePath(values, width, height) {
@@ -17,28 +18,27 @@ function buildLinePath(values, width, height) {
     .join(" ");
 }
 
-export default function GreenhouseDetail({ greenhouse, onBack, onControlDevice }) {
+function formatTime(isoTimestamp) {
+  return isoTimestamp.slice(11, 16); // "2026-07-08T10:00:00" -> "10:00"
+}
+
+export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
+  const [detail, setDetail] = useState(null);
   const [toast, setToast] = useState("");
   const width = 260;
   const height = 80;
-  const tempPath = buildLinePath(
-    greenhouse.history.map((h) => h.temperature),
-    width,
-    height
-  );
-  const humidityPath = buildLinePath(
-    greenhouse.history.map((h) => h.humidity),
-    width,
-    height
-  );
+
+  useEffect(() => {
+    setDetail(null);
+    getGreenhouseDetail(greenhouse.id).then(setDetail);
+  }, [greenhouse.id]);
+
+  const history = detail?.history ?? [];
+  const humidityPath = buildLinePath(history.map((h) => h.humidity), width, height);
 
   function handleAction() {
-    onControlDevice(
-      greenhouse.id,
-      greenhouse.recommendedAction.device,
-      greenhouse.recommendedAction.action
-    );
-    setToast(`${greenhouse.recommendedAction.label} 완료했어요.`);
+    onAction(greenhouse.activeAlert.id);
+    setToast(`${greenhouse.activeAlert.action.label} 완료했어요.`);
     setTimeout(() => setToast(""), 2000);
   }
 
@@ -52,30 +52,26 @@ export default function GreenhouseDetail({ greenhouse, onBack, onControlDevice }
         <h2>{greenhouse.name}</h2>
         <StatusBadge status={greenhouse.status} />
       </div>
-      {greenhouse.cause && (
-        <p className="greenhouse-detail__cause">{greenhouse.cause}</p>
-      )}
+      {greenhouse.reason && <p className="greenhouse-detail__cause">{greenhouse.reason}</p>}
 
-      {greenhouse.recommendedAction && (
+      {greenhouse.activeAlert && (
         <button className="greenhouse-detail__action" onClick={handleAction}>
-          [{greenhouse.recommendedAction.label}]
+          [{greenhouse.activeAlert.action.label}]
         </button>
       )}
       {toast && <p className="greenhouse-detail__toast">{toast}</p>}
 
       <div className="greenhouse-detail__chart">
-        <p>최근 온도·습도 추이</p>
+        <p>최근 습도 추이</p>
         <svg viewBox={`0 0 ${width} ${height}`} className="greenhouse-detail__svg">
-          <path d={tempPath} className="chart-line chart-line--temp" fill="none" />
           <path d={humidityPath} className="chart-line chart-line--humidity" fill="none" />
         </svg>
         <div className="greenhouse-detail__legend">
-          <span className="chart-legend chart-legend--temp">● 온도</span>
           <span className="chart-legend chart-legend--humidity">● 습도</span>
         </div>
         <div className="greenhouse-detail__times">
-          {greenhouse.history.map((h) => (
-            <span key={h.time}>{h.time}</span>
+          {history.map((h) => (
+            <span key={h.timestamp}>{formatTime(h.timestamp)}</span>
           ))}
         </div>
       </div>
