@@ -22,11 +22,21 @@ uv run python -m pytest tests/   # 테스트 실행
 ```
 virtualfarm/
 ├── sim/
-│   └── engine.py    # VirtualGreenhouse — tick/control/read (뼈대)
+│   └── engine.py          # VirtualGreenhouse(tick/control/read) + VirtualFarm(다중 온실)
 ├── tests/
+│   ├── test_engine.py     # 초기화/제어/조회/tick 물리 모델
+│   ├── test_farm.py       # 다중 온실 독립성
+│   ├── test_scenario.py   # "경고 → 창문 열기 → 경고 해소" 필수 시나리오
 │   └── test_smoke.py
-└── pyproject.toml   # 자체 uv 프로젝트 (backend 와 독립)
+├── ADAPTER_CONTRACT.md    # backend 연동 계약 (연동 자체는 별도 브랜치)
+└── pyproject.toml         # 자체 uv 프로젝트 (backend 와 독립)
 ```
+
+## 시뮬레이션 모델 요약
+
+- 모든 변화는 "목표값으로 지수 수렴"하는 1차 모델 — tick 을 쪼개든 크게 부르든 결과 동일, 목표 초과 없음.
+- 창문 open → 습도가 외기(50%)로 서서히 수렴 · 관수 on → 습도가 95% 상한으로 수렴 · 차광막 closed → 온도 상승 억제(목표 38℃→32℃).
+- 습도 0~100%, 온도 -20~60℃ 로 clamp.
 
 ## 다음 할 일
 
