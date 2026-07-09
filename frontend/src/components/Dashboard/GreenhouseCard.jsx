@@ -15,7 +15,7 @@ export default function GreenhouseCard({ greenhouse, onClick }) {
         <span className="greenhouse-card__name">{greenhouse.name}</span>
         <StatusBadge status={greenhouse.status} />
       </div>
-      <div className="greenhouse-card__metrics">
+      <div className="greenhouse-card__metrics data-face">
         <span>🌡️ {greenhouse.temperature}℃</span>
         <span>💧 {greenhouse.humidity}%</span>
       </div>
