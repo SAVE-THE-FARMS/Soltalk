@@ -15,11 +15,14 @@ export default function App() {
   const hasInteractedRef = useRef(false);
   const farm = useFarmData();
 
-  const criticalNotifications = farm.notifications.filter(
-    (n) => n.severity === "critical" && !dismissedIds.includes(n.greenhouseId)
+  const visibleNotifications = farm.notifications.filter(
+    (n) => !dismissedIds.includes(n.greenhouseId)
   );
-  const warningNotifications = farm.notifications.filter(
-    (n) => n.severity === "warning" && !dismissedIds.includes(n.greenhouseId)
+  const criticalNotifications = visibleNotifications.filter(
+    (n) => n.severity === "critical"
+  );
+  const warningNotifications = visibleNotifications.filter(
+    (n) => n.severity === "warning"
   );
 
   function handleChangeView(nextView) {
@@ -104,6 +107,7 @@ export default function App() {
             onSelectGreenhouse={setSelectedGreenhouseId}
             onReset={handleReset}
             onEscalate={handleEscalate}
+            visibleNotifications={visibleNotifications}
           />
         )}
       </div>

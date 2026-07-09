@@ -5,7 +5,7 @@ import HistoryTimeline from "./HistoryTimeline";
 import DemoControls from "./DemoControls";
 import { SEVERITY_ORDER } from "../../lib/labels";
 
-export default function Dashboard({ farm, onSelectGreenhouse, onReset, onEscalate }) {
+export default function Dashboard({ farm, onSelectGreenhouse, onReset, onEscalate, visibleNotifications }) {
   const sorted = [...farm.greenhouses].sort(
     (a, b) => SEVERITY_ORDER[b.status] - SEVERITY_ORDER[a.status]
   );
@@ -13,7 +13,7 @@ export default function Dashboard({ farm, onSelectGreenhouse, onReset, onEscalat
   return (
     <div className="dashboard">
       <DemoControls onReset={onReset} onEscalate={onEscalate} />
-      <AlertBanner notifications={farm.notifications} onSelect={onSelectGreenhouse} />
+      <AlertBanner notifications={visibleNotifications} onSelect={onSelectGreenhouse} />
       <div className="dashboard__grid">
         {sorted.map((gh) => (
           <GreenhouseCard key={gh.id} greenhouse={gh} onClick={onSelectGreenhouse} />

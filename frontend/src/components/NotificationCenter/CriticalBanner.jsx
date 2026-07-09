@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
 
-function playBeep() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+function createAudioContext() {
+  return new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playBeep(ctx) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "sine";
@@ -15,6 +18,7 @@ function playBeep() {
 
 export default function CriticalBanner({ notifications, onAction, onDismiss, canPlaySound }) {
   const playedIdsRef = useRef(new Set());
+  const audioCtxRef = useRef(null);
 
   useEffect(() => {
     if (!canPlaySound) return;
@@ -22,7 +26,10 @@ export default function CriticalBanner({ notifications, onAction, onDismiss, can
       if (!playedIdsRef.current.has(n.id)) {
         playedIdsRef.current.add(n.id);
         try {
-          playBeep();
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = createAudioContext();
+          }
+          playBeep(audioCtxRef.current);
         } catch {
           // 브라우저가 오디오를 지원하지 않으면 조용히 무시
         }
