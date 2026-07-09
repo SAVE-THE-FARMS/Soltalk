@@ -287,3 +287,19 @@ body {
   50% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
 }
 .mic-error { color: #b71c1c; font-size: 13px; margin: 4px 0; }
+
+@media (min-width: 600px) {
+  .app { max-width: 600px; }
+}
+@media (min-width: 900px) {
+  .app { max-width: 720px; }
+  .dashboard__grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+
+.greenhouse-detail__chart { overflow-x: auto; }
+
+.composer button,
+.composer input,
+.top-nav__tab {
+  min-height: 44px;
+}
