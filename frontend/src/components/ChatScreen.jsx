@@ -1,13 +1,8 @@
 import { useRef, useState } from "react";
 import { sendMessage } from "../api";
 
-// SolTalk 채팅 화면.
-// 완료형 동사 매칭으로 액션 카드를 강조하는 건 실제 NLU 결과가 아니라
-// 프론트 단순 텍스트 패턴 매칭(데모용 휴리스틱)이다.
-const ACTION_DONE_PATTERN = /(열었어요|닫았어요|틀었어요|껐어요)/;
-
 export default function ChatScreen() {
-  const [messages, setMessages] = useState([]); // { id, role: "user"|"bot", text, pending? }
+  const [messages, setMessages] = useState([]); // { id, role: "user"|"bot", text, pending?, success? }
   const [input, setInput] = useState("");
   const nextIdRef = useRef(0);
 
@@ -24,10 +19,11 @@ export default function ChatScreen() {
     setInput("");
 
     try {
-      const reply = await sendMessage(text);
+      const { reply, actions_taken } = await sendMessage(text);
+      const success = actions_taken.some((a) => a.success);
       setMessages((m) =>
         m.map((msg) =>
-          msg.id === botId ? { id: botId, role: "bot", text: reply } : msg
+          msg.id === botId ? { id: botId, role: "bot", text: reply, success } : msg
         )
       );
     } catch (e) {
@@ -46,9 +42,8 @@ export default function ChatScreen() {
   }
 
   function handleMic() {
-    // TODO(학생): 브라우저 Web Speech API 로 음성 인식 →
-    //   인식된 텍스트를 setInput(...) 에 넣기 (원하면 바로 handleSend 까지)
-    alert("음성 입력은 아직 미구현 (Web Speech API 연결하기)");
+    // TODO(Task 2): MediaRecorder 기반 녹음으로 교체.
+    alert("음성 입력은 아직 미구현");
   }
 
   return (
@@ -58,8 +53,7 @@ export default function ChatScreen() {
           <p className="hint">예: "차광막 닫아줘", "지금 온도 몇 도야?"</p>
         )}
         {messages.map((m) => {
-          const isAction =
-            m.role === "bot" && !m.pending && ACTION_DONE_PATTERN.test(m.text);
+          const isAction = m.role === "bot" && !m.pending && m.success;
           return (
             <div
               key={m.id}
