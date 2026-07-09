@@ -12,8 +12,8 @@
 |---|---|
 | 설명 | 사용자의 자연어 명령/질문을 받아 의도 파악 → 장비 제어 또는 데이터 조회 실행 → 자연어 응답 반환 |
 | Request Body | `{ "session_id": "string", "message": "string" }` |
-| Response Body | `{ "reply": "string", "actions_taken": [ { "device": "shade", "greenhouse_id": 1, "action": "close", "success": true } ], "updated_state": { ... } }` |
-| 비고 | 세션별 최근 대화 히스토리 유지 (재질문 흐름 대응) |
+| Response Body | `{ "reply": "string", "actions_taken": [ { "device": "shade", "greenhouse_id": 1, "action": "close", "success": true } ], "updated_state": { "1": { "shade": "open", ... }, "2": {...}, "3": {...} } }` |
+| 비고 | 세션별 최근 대화 히스토리 유지 (재질문 흐름 대응). 온실 지정 명령 지원 ("2번 온실 창문 열어줘", "딸기 온실 습도 몇이야?") — 미지정 시 1번 온실 대상. `updated_state` 는 온실 번호별 장비 상태 |
 
 ---
 

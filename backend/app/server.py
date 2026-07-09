@@ -50,9 +50,13 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    reply: str  # 자연어 응답 (예: "차광막을 닫았어요.")
+    reply: str  # 자연어 응답 (예: "1번 온실 차광막을 닫았어요.")
     actions_taken: list[dict] = []
-    updated_state: dict = {}
+    updated_state: dict = {}  # 온실별 장비 상태 {"1": {...}, "2": {...}, "3": {...}}
+
+
+def _all_device_states() -> dict:
+    return {gid: dict(adapter.state) for gid, adapter in container.iot_by_greenhouse.items()}
 
 
 @app.get("/health")
@@ -71,14 +75,14 @@ def chat(req: ChatRequest) -> ChatResponse:
     except Exception:
         logger.exception("chat_agent.handle 처리 실패")
         return ChatResponse(
-            reply=FRIENDLY_ERROR_REPLY, actions_taken=[], updated_state=dict(container.chat_iot.state)
+            reply=FRIENDLY_ERROR_REPLY, actions_taken=[], updated_state=_all_device_states()
         )
 
     container.sessions.append_turn(session_id, req.message, result["reply"])
     return ChatResponse(
         reply=result["reply"],
         actions_taken=result["actions_taken"],
-        updated_state=dict(container.chat_iot.state),
+        updated_state=_all_device_states(),
     )
 
 

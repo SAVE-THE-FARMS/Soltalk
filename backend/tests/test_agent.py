@@ -36,8 +36,15 @@ class FakeOpenAI:
         return next(self._responses)
 
 
-def _agent(responses, iot=None):
-    return ChatAgent(iot=iot or MockIoTAdapter(), client=FakeOpenAI(responses))
+GREENHOUSE_NAMES = {1: "1번 온실(토마토)", 2: "2번 온실(딸기)", 3: "3번 온실(오이)"}
+
+
+def _agent(responses, iot_by_greenhouse=None):
+    return ChatAgent(
+        iot_by_greenhouse=iot_by_greenhouse or {1: MockIoTAdapter()},
+        greenhouse_names=GREENHOUSE_NAMES,
+        client=FakeOpenAI(responses),
+    )
 
 
 def test_handle_never_returns_none_reply():
@@ -61,7 +68,7 @@ def test_handle_executes_control_device_tool_call():
             _response(_message(tool_calls=[tool_call])),
             _response(_message(content="차광막을 닫았어요.")),
         ],
-        iot=iot,
+        iot_by_greenhouse={1: iot},
     )
 
     result = agent.handle("차광막 닫아줘")
@@ -112,7 +119,8 @@ def test_handle_includes_prior_history_in_prompt():
             return super()._create(**kwargs)
 
     agent = ChatAgent(
-        iot=MockIoTAdapter(),
+        iot_by_greenhouse={1: MockIoTAdapter()},
+        greenhouse_names=GREENHOUSE_NAMES,
         client=RecordingOpenAI([_response(_message(content="네, 다시 닫았어요."))]),
     )
     history = [
@@ -123,3 +131,125 @@ def test_handle_includes_prior_history_in_prompt():
     agent.handle("그거 다시 닫아줘", history=history)
 
     assert captured["messages"][1:3] == history
+
+
+# --- 온실 지정 제어/조회 ("2번 온실 창문 열어줘", "딸기 온실 습도 몇이야?") ---
+
+
+def _two_greenhouses():
+    return {1: MockIoTAdapter(), 2: MockIoTAdapter()}
+
+
+def test_control_routes_to_specified_greenhouse():
+    tool_call = _tool_call(
+        "call1", "control_device", '{"device": "window", "action": "open", "greenhouse_id": 2}'
+    )
+    iot_by_greenhouse = _two_greenhouses()
+    agent = _agent(
+        [
+            _response(_message(tool_calls=[tool_call])),
+            _response(_message(content="2번 온실 창문을 열었어요.")),
+        ],
+        iot_by_greenhouse=iot_by_greenhouse,
+    )
+
+    result = agent.handle("2번 온실 창문 열어줘")
+
+    assert result["actions_taken"] == [
+        {"device": "window", "greenhouse_id": 2, "action": "open", "success": True}
+    ]
+    assert iot_by_greenhouse[2].state["window"] == "open"
+    assert iot_by_greenhouse[1].state["window"] == "closed"  # 다른 온실엔 영향 없음
+
+
+def test_control_defaults_to_greenhouse_1_when_unspecified():
+    tool_call = _tool_call("call1", "control_device", '{"device": "window", "action": "open"}')
+    iot_by_greenhouse = _two_greenhouses()
+    agent = _agent(
+        [
+            _response(_message(tool_calls=[tool_call])),
+            _response(_message(content="1번 온실 창문을 열었어요.")),
+        ],
+        iot_by_greenhouse=iot_by_greenhouse,
+    )
+
+    result = agent.handle("창문 열어줘")
+
+    assert result["actions_taken"][0]["greenhouse_id"] == 1
+    assert iot_by_greenhouse[1].state["window"] == "open"
+    assert iot_by_greenhouse[2].state["window"] == "closed"
+
+
+def test_control_unknown_greenhouse_fails_gracefully():
+    tool_call = _tool_call(
+        "call1", "control_device", '{"device": "window", "action": "open", "greenhouse_id": 99}'
+    )
+    iot_by_greenhouse = _two_greenhouses()
+    agent = _agent(
+        [
+            _response(_message(tool_calls=[tool_call])),
+            _response(_message(content="99번 온실은 없어요.")),
+        ],
+        iot_by_greenhouse=iot_by_greenhouse,
+    )
+
+    result = agent.handle("99번 온실 창문 열어줘")
+
+    assert result["actions_taken"] == [
+        {"device": "window", "greenhouse_id": 99, "action": "open", "success": False}
+    ]
+    assert iot_by_greenhouse[1].state["window"] == "closed"
+    assert iot_by_greenhouse[2].state["window"] == "closed"
+
+
+def test_read_data_routes_to_specified_greenhouse():
+    captured = {}
+
+    class RecordingOpenAI(FakeOpenAI):
+        def _create(self, **kwargs):
+            captured.setdefault("calls", []).append(kwargs)
+            return super()._create(**kwargs)
+
+    class FixedHumidityAdapter(MockIoTAdapter):
+        def read(self, target):
+            return {"ok": True, "target": target, "value": 82, "unit": "%"}
+
+    tool_call = _tool_call("call1", "read_data", '{"target": "humidity", "greenhouse_id": 2}')
+    agent = ChatAgent(
+        iot_by_greenhouse={1: MockIoTAdapter(), 2: FixedHumidityAdapter()},
+        greenhouse_names=GREENHOUSE_NAMES,
+        client=RecordingOpenAI(
+            [
+                _response(_message(tool_calls=[tool_call])),
+                _response(_message(content="2번 온실 습도는 82%예요.")),
+            ]
+        ),
+    )
+
+    result = agent.handle("딸기 온실 습도 몇이야?")
+
+    assert result["reply"] == "2번 온실 습도는 82%예요."
+    tool_result_message = captured["calls"][1]["messages"][-1]
+    assert '"value": 82' in tool_result_message["content"]
+
+
+def test_system_prompt_describes_farm_layout():
+    """모델이 '딸기 온실'을 2번으로 매핑하려면 프롬프트에 온실 구성이 있어야 한다."""
+    captured = {}
+
+    class RecordingOpenAI(FakeOpenAI):
+        def _create(self, **kwargs):
+            captured["messages"] = kwargs["messages"]
+            return super()._create(**kwargs)
+
+    agent = ChatAgent(
+        iot_by_greenhouse={1: MockIoTAdapter(), 2: MockIoTAdapter()},
+        greenhouse_names=GREENHOUSE_NAMES,
+        client=RecordingOpenAI([_response(_message(content="안녕하세요!"))]),
+    )
+
+    agent.handle("안녕")
+
+    system_prompt = captured["messages"][0]["content"]
+    assert "1번 온실(토마토)" in system_prompt
+    assert "2번 온실(딸기)" in system_prompt
