@@ -1,0 +1,99 @@
+"""온실 대시보드 상태 계산.
+
+smartfarm_api_spec.md 1.2 (/api/state, /api/state/{id}) 대응.
+의존성(온실별 IoT 어댑터, 온실 정적 데이터, 실시간 센서 데이터)은 생성자로 주입받는다.
+
+환경값 규칙: 온실 레코드에 temperature/humidity 가 있으면 그 정적 값을,
+없으면(=1번 온실) 실시간 센서 데이터(sensor_data)를 쓴다. 장비 상태는 항상
+각 온실의 IoT 어댑터에서 읽는다.
+
+status 판정 (습도 기준): >=90 critical / >=80 warning / else normal
+"""
+
+from datetime import datetime
+
+from ..iot.base import IoTAdapter
+
+
+class GreenhouseService:
+    HUMIDITY_WARNING_THRESHOLD = 80
+    HUMIDITY_CRITICAL_THRESHOLD = 90
+
+    def __init__(
+        self,
+        iot_by_id: dict[int, IoTAdapter],
+        greenhouses: dict[int, dict],
+        sensor_data: dict[str, dict],
+    ):
+        self._iot_by_id = iot_by_id
+        self._greenhouses = greenhouses
+        self._sensor_data = sensor_data
+
+    @property
+    def greenhouse_ids(self) -> list[int]:
+        return list(self._greenhouses)
+
+    def adapter(self, greenhouse_id: int) -> IoTAdapter | None:
+        return self._iot_by_id.get(greenhouse_id)
+
+    def _status_for(self, humidity: float) -> str:
+        if humidity >= self.HUMIDITY_CRITICAL_THRESHOLD:
+            return "critical"
+        if humidity >= self.HUMIDITY_WARNING_THRESHOLD:
+            return "warning"
+        return "normal"
+
+    def _env_values_for(self, greenhouse_id: int) -> dict:
+        record = self._greenhouses[greenhouse_id]
+        if "temperature" in record and "humidity" in record:
+            return {"temperature": record["temperature"], "humidity": record["humidity"]}
+        return {
+            "temperature": self._sensor_data["temperature"]["value"],
+            "humidity": self._sensor_data["humidity"]["value"],
+        }
+
+    def get_dashboard(self, now: datetime | None = None) -> list[dict]:
+        now = now or datetime.now()
+        states = []
+        for greenhouse_id, record in self._greenhouses.items():
+            env = self._env_values_for(greenhouse_id)
+            states.append(
+                {
+                    "id": greenhouse_id,
+                    "name": record["name"],
+                    "status": self._status_for(env["humidity"]),
+                    "temperature": env["temperature"],
+                    "humidity": env["humidity"],
+                    "devices": dict(self._iot_by_id[greenhouse_id].state),
+                    "last_updated": now.isoformat(),
+                }
+            )
+        return states
+
+    def get_detail(self, greenhouse_id: int, now: datetime | None = None) -> dict | None:
+        if greenhouse_id not in self._greenhouses:
+            return None
+
+        record = self._greenhouses[greenhouse_id]
+        env = self._env_values_for(greenhouse_id)
+        status = self._status_for(env["humidity"])
+
+        reason = None
+        recommended_action = None
+        if status in ("warning", "critical"):
+            threshold = (
+                self.HUMIDITY_CRITICAL_THRESHOLD
+                if status == "critical"
+                else self.HUMIDITY_WARNING_THRESHOLD
+            )
+            reason = f"습도 {env['humidity']}%, 임계값 {threshold}% 초과"
+            recommended_action = {"device": "window", "action": "open", "label": "창문 열기"}
+
+        return {
+            "id": greenhouse_id,
+            "status": status,
+            "reason": reason,
+            "recommended_action": recommended_action,
+            "current_values": env,
+            "history": record["history"],
+        }

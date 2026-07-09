@@ -8,6 +8,15 @@ dependencies = [
     "uvicorn[standard]",
     "openai",
     "python-dotenv",
+    "python-multipart",
 ]
 
-# 실행: backend/ 에서  ->  uv run python app/server.py
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+# 실행: backend/ 에서  ->  uv run python -m app.server
