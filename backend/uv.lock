@@ -542,6 +542,7 @@ dependencies = [
     { name = "openai" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
+    { name = "soltalk-virtualfarm" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -556,8 +557,19 @@ requires-dist = [
     { name = "openai" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
+    { name = "soltalk-virtualfarm", editable = "../virtualfarm" },
     { name = "uvicorn", extras = ["standard"] },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.1.1" }]
+
+[[package]]
+name = "soltalk-virtualfarm"
+version = "0.1.0"
+source = { editable = "../virtualfarm" }
+
+[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.1.1" }]

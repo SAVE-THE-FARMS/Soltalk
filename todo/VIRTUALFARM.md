@@ -19,7 +19,11 @@
 ## 3. backend 연동 준비 (구현은 나중에, 별도 브랜치에서)
 - [x] backend 가 갈아끼울 수 있는 어댑터 명세 문서화 — `virtualfarm/ADAPTER_CONTRACT.md`
 - [x] 다중 온실 지원 — `VirtualFarm` 매니저 (온실 3개 독립 상태, `tests/test_farm.py`)
-- [ ] (다음 브랜치) `VirtualFarmAdapter` 로 backend 조립 지점 교체 — ADAPTER_CONTRACT.md 4절 참고
+- [x] (virtualfarm-integration 브랜치) `VirtualFarmAdapter` 로 backend 조립 지점 교체 완료
+  - `backend/app/iot/virtual.py` — lazy-tick 어댑터 (실제 1초 = 시뮬레이션 60초)
+  - `backend/app/container.py` — 온실 3개 전부 시뮬레이션 어댑터로 조립
+  - `GreenhouseService` — 어댑터가 environment 를 주면 정적 데이터보다 우선
+  - 라이브 검증: 창문 열기 → 습도 82→63.8% 하강 → 경고 자동 해소 → 리셋 시 82% 복원
 
 ## 절대 하지 말 것
 - backend/, frontend/ 파일 수정 금지 (이 브랜치에서는)

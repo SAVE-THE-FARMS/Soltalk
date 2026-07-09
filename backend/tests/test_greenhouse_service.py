@@ -8,9 +8,12 @@ status: humidity >= 90 -> "critical", >= 80 -> "warning", else "normal"
 
 from datetime import datetime
 
+import pytest
+
 from app.data.greenhouse_data import GREENHOUSES
 from app.data.mock_data import MOCK_DATA
 from app.iot.mock import MockIoTAdapter
+from app.iot.virtual import VirtualFarmAdapter
 from app.services.greenhouse import GreenhouseService
 
 FIXED_NOW = datetime(2026, 7, 8, 13, 0, 0)
@@ -90,3 +93,31 @@ def test_detail_critical_reason_cites_critical_threshold(monkeypatch):
 
     assert detail["status"] == "critical"
     assert detail["reason"] == "습도 95%, 임계값 90% 초과"
+
+
+def _fixed_clock():
+    return 1000.0
+
+
+def test_env_values_come_from_adapter_simulation_when_available():
+    """어댑터가 환경값(environment)을 제공하면(=VirtualFarmAdapter) 정적 레코드보다 우선한다.
+
+    온실 2의 정적 레코드는 습도 82 이지만, 시뮬레이션 어댑터가 70 을 주면 70 이 보여야 한다.
+    MockIoTAdapter 온실은 기존처럼 정적/센서 데이터를 쓴다 (fallback).
+    """
+    iot_by_id = {
+        1: MockIoTAdapter(),
+        2: VirtualFarmAdapter(
+            initial_environment={"temperature": 25.0, "humidity": 70.0},
+            initial_devices={"shade": "open", "window": "closed", "irrigation": "off"},
+            clock=_fixed_clock,
+        ),
+        3: MockIoTAdapter(initial_state={"shade": "closed", "window": "open", "irrigation": "off"}),
+    }
+    service = GreenhouseService(iot_by_id, GREENHOUSES, MOCK_DATA)
+
+    by_id = {g["id"]: g for g in service.get_dashboard(now=FIXED_NOW)}
+
+    assert by_id[2]["humidity"] == pytest.approx(70.0)  # 시뮬레이션 값 (정적 82 아님)
+    assert by_id[2]["status"] == "normal"               # 70% → 경고 아님
+    assert by_id[3]["humidity"] == 55                    # Mock 온실은 기존 정적 값 유지

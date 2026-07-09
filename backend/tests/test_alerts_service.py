@@ -91,6 +91,10 @@ class _FailingIoT:
     def control(self, device, action):
         return {"ok": False, "device": device, "state": self.state[device], "reason": "simulated_failure"}
 
+    def read(self, target):
+        # IoTAdapter 계약 준수: environment 미지원 → 정적 데이터 fallback 경로를 타게 한다
+        return {"ok": False, "target": target, "reason": "unknown_target"}
+
 
 def test_execute_action_keeps_alert_active_when_control_fails():
     iot_by_id = _default_iot_by_id()
