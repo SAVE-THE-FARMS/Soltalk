@@ -46,6 +46,7 @@ class AppContainer:
         self.chat_agent = ChatAgent(
             iot_by_greenhouse=self.iot_by_greenhouse,
             greenhouse_names={gid: record["name"] for gid, record in GREENHOUSES.items()},
+            status_provider=self.greenhouse_service.get_dashboard,
         )
         self.transcription = TranscriptionService()
 
