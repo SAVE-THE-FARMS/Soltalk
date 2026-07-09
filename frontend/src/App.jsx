@@ -32,7 +32,7 @@ export default function App() {
   }
 
   function handleAction(alertId) {
-    farm.runAction(alertId);
+    return farm.runAction(alertId); // 호출한 쪽에서 완료를 기다릴 수 있게 promise 반환
   }
 
   function handleDismiss(alertId) {

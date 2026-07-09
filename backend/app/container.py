@@ -55,5 +55,6 @@ class AppContainer:
         """리허설/재시연용 전체 초기화."""
         for adapter in self.iot_by_greenhouse.values():
             adapter.reset()
+        self.greenhouse_service.reset()
         self.sessions.reset()
         self.alert_service.reset()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getGreenhouseDetail } from "../api";
 import StatusBadge from "./ui/StatusBadge";
 
@@ -19,7 +19,13 @@ function buildLinePath(values, width, height) {
 }
 
 function formatTime(isoTimestamp) {
-  return isoTimestamp.slice(11, 16); // "2026-07-08T10:00:00" -> "10:00"
+  return isoTimestamp.slice(11, 19); // "2026-07-08T10:00:00" -> "10:00:00"
+}
+
+// 라이브 샘플이 쌓이면 라벨 12개가 다 안 들어가므로 처음/중간/끝만 보여준다
+function pickTimeLabels(history) {
+  if (history.length <= 3) return history;
+  return [history[0], history[Math.floor(history.length / 2)], history[history.length - 1]];
 }
 
 export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
@@ -28,17 +34,24 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
   const width = 260;
   const height = 80;
 
+  const load = useCallback(() => getGreenhouseDetail(greenhouse.id).then(setDetail), [greenhouse.id]);
+
   useEffect(() => {
     setDetail(null);
-    getGreenhouseDetail(greenhouse.id).then(setDetail);
-  }, [greenhouse.id]);
+    load();
+    // 조치 후 습도가 내려가는 걸 그래프에서 볼 수 있게 주기적으로 재조회
+    const intervalId = setInterval(load, 3000);
+    return () => clearInterval(intervalId);
+  }, [load]);
 
   const history = detail?.history ?? [];
   const humidityPath = buildLinePath(history.map((h) => h.humidity), width, height);
 
-  function handleAction() {
-    onAction(greenhouse.activeAlert.id);
-    setToast(`${greenhouse.activeAlert.action.label} 완료했어요.`);
+  async function handleAction() {
+    const label = greenhouse.activeAlert.action.label;
+    await onAction(greenhouse.activeAlert.id);
+    load(); // 다음 폴링(3초)을 기다리지 않고 그래프에 바로 반영
+    setToast(`${label} 완료했어요.`);
     setTimeout(() => setToast(""), 2000);
   }
 
@@ -70,7 +83,7 @@ export default function GreenhouseDetail({ greenhouse, onBack, onAction }) {
           <span className="chart-legend chart-legend--humidity">● 습도</span>
         </div>
         <div className="greenhouse-detail__times">
-          {history.map((h) => (
+          {pickTimeLabels(history).map((h) => (
             <span key={h.timestamp}>{formatTime(h.timestamp)}</span>
           ))}
         </div>
