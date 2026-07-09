@@ -371,6 +371,125 @@ body {
 }
 .mic-error { color: var(--color-critical); font-size: 13px; margin: 4px 0; }
 
+/* 실시간 통화(Realtime API) 모드 — 고령 사용자 기준: 버튼 크고, 상태는 색상+텍스트 둘 다 */
+.voice-mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.voice-mode-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  min-height: 48px;
+  cursor: pointer;
+}
+.voice-mode-btn--start {
+  background: var(--color-leaf);
+  color: #fff;
+}
+
+.voice-mode-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.voice-mode-btn--mute {
+  background: #fff;
+  border: 2px solid var(--color-leaf);
+  color: var(--color-leaf);
+}
+.voice-mode-btn--mute.is-muted {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: #3a2a00;
+}
+.voice-mode-btn--stop {
+  background: var(--color-critical);
+  color: #fff;
+}
+
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--color-leaf-soft);
+  color: var(--color-ink);
+  transition: background-color 0.3s ease;
+}
+.voice-status--error,
+.voice-status--fallback {
+  background: color-mix(in srgb, var(--color-critical) 15%, white);
+}
+.voice-status__icon { font-size: 18px; display: inline-block; }
+.voice-status--connecting .voice-status__icon,
+.voice-status--reconnecting .voice-status__icon {
+  animation: voice-icon-spin 1s linear infinite;
+}
+.voice-status--listening .voice-status__icon {
+  animation: voice-icon-pulse 1.6s ease-in-out infinite;
+}
+.voice-status--thinking .voice-status__icon {
+  animation: voice-icon-fade 1.4s ease-in-out infinite;
+}
+@keyframes voice-icon-spin { to { transform: rotate(360deg); } }
+@keyframes voice-icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+@keyframes voice-icon-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* 말하는 중 — 작은 이퀄라이저 바 3개가 엇박으로 튀는 것으로 "지금 소리나고 있음"을 표현 */
+.voice-status__wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+}
+.voice-status__wave span {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-leaf);
+  animation: voice-wave-bounce 0.9s ease-in-out infinite;
+}
+.voice-status__wave span:nth-child(2) { animation-delay: 0.15s; }
+.voice-status__wave span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes voice-wave-bounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.voice-status__error {
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-critical);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-status__icon,
+  .voice-status__wave span {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .voice-mode-bar { flex-direction: column; align-items: stretch; }
+  .voice-mode-btn { width: 100%; }
+}
+
 @media (min-width: 600px) {
   .app { max-width: 600px; }
 }

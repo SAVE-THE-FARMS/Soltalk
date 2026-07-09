@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { sendMessage, transcribeAudio } from "../api";
 import { useRecorder } from "../lib/useRecorder";
+import { useRealtimeSession } from "../realtime/useRealtimeSession";
+import VoiceModeButton from "./VoiceModeButton";
+import VoiceStatusIndicator from "./VoiceStatusIndicator";
 
 const QUICK_REPLIES = [
   "차광막 닫아줘",
@@ -19,6 +22,21 @@ export default function ChatScreen() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // 실시간 통화(Realtime API) 모드 — 기존 텍스트/STT 흐름과는 완전히 별도 경로.
+  // 음성 대화도 같은 채팅 이력에 기록되도록 여기서 messages 에 직접 이어붙인다.
+  const voice = useRealtimeSession({
+    onUserMessage: (text) => {
+      setMessages((m) => [...m, { id: nextIdRef.current++, role: "user", text }]);
+    },
+    onAssistantMessage: (text, actionsTaken) => {
+      const success = (actionsTaken || []).some((a) => a.success);
+      setMessages((m) => [
+        ...m,
+        { id: nextIdRef.current++, role: "bot", text: text || "네, 처리했어요.", success },
+      ]);
+    },
+  });
 
   const { isRecording, elapsedSeconds, start, stop } = useRecorder({
     onStop: async (blob) => {
@@ -112,6 +130,22 @@ export default function ChatScreen() {
       </div>
 
       {micError && <p className="mic-error">{micError}</p>}
+
+      <div className="voice-mode-bar">
+        <VoiceModeButton
+          status={voice.status}
+          muted={voice.muted}
+          onStart={voice.start}
+          onStop={voice.stop}
+          onToggleMute={voice.toggleMute}
+        />
+        <VoiceStatusIndicator
+          status={voice.status}
+          statusLabel={voice.statusLabel}
+          errorText={voice.errorText}
+        />
+      </div>
+      <audio ref={voice.audioElRef} autoPlay playsInline hidden />
 
       <div className="composer">
         <button
