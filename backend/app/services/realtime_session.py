@@ -12,12 +12,15 @@ import os
 
 import httpx
 
-REALTIME_SESSIONS_URL = "https://api.openai.com/v1/realtime/sessions"
+REALTIME_SESSIONS_URL = "https://api.openai.com/v1/realtime/client_secrets"
 
 
 class RealtimeSessionService:
     # 실제 OpenAI 계정에서 쓸 수 있는 Realtime 모델명이 다르면 이 상수만 바꾸면 된다.
-    MODEL = "gpt-5.4-mini-realtime"
+    # 2026-07-10 실제 키로 라이브 호출해 확인된 값 — /v1/realtime/sessions 는 404 (구
+    # 엔드포인트), 현재는 /v1/realtime/client_secrets + {"session": {"type": "realtime", ...}}
+    # 바디, 응답도 {"value", "expires_at", "session": {...}} 형태로 최상위에 온다(중첩 아님).
+    MODEL = "gpt-4o-realtime-preview"
 
     def __init__(self, http_client: httpx.Client | None = None):
         self._http_client = http_client  # None 이면 최초 호출 때 lazy 생성 (import 시 API 키 불필요)
@@ -28,14 +31,13 @@ class RealtimeSessionService:
         return self._http_client
 
     def create_session(self) -> dict:
-        """OpenAI에 Realtime 세션을 만들고 프론트에 넘길 {"client_secret", "expires_at"}만 추출해 돌려준다."""
+        """OpenAI에 Realtime ephemeral 키를 만들고 프론트에 넘길 {"client_secret", "expires_at"}만 추출해 돌려준다."""
         client = self._client_or_default()
         response = client.post(
             REALTIME_SESSIONS_URL,
-            json={"model": self.MODEL},
+            json={"session": {"type": "realtime", "model": self.MODEL}},
             headers={"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"},
         )
         response.raise_for_status()
         data = response.json()
-        client_secret = data["client_secret"]
-        return {"client_secret": client_secret["value"], "expires_at": client_secret["expires_at"]}
+        return {"client_secret": data["value"], "expires_at": data["expires_at"]}
