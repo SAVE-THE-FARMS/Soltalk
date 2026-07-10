@@ -23,6 +23,8 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.container import AppContainer  # noqa: E402  (위 sys.path 설정 이후에 import)
+from app.services.chat_agent import ChatAgent  # noqa: E402
+from app.services.tool_execution import execute_tool  # noqa: E402
 
 # env/ 폴더의 .env 로드  (OPENAI_API_KEY 등)
 load_dotenv(Path(__file__).resolve().parent.parent / "env" / ".env")
@@ -154,6 +156,35 @@ def reset_demo():
     """전체 Mock 상태를 초기값으로 리셋 (리허설/재시연용)."""
     container.reset_all()
     return {"success": True}
+
+
+class ToolExecuteRequest(BaseModel):
+    tool_name: str
+    arguments: dict
+
+
+@app.post("/api/realtime/session")
+def create_realtime_session():
+    try:
+        return container.realtime_sessions.create_session()
+    except Exception:
+        logger.exception("realtime session 발급 실패")
+        raise HTTPException(status_code=502, detail="음성 세션을 시작할 수 없어요.")
+
+
+@app.post("/api/tools/execute")
+def execute_tool_endpoint(req: ToolExecuteRequest):
+    greenhouse_id = req.arguments.get("greenhouse_id")
+    if req.tool_name in ("read_data", "query_data") and greenhouse_id is None:
+        greenhouse_id = ChatAgent.DEFAULT_GREENHOUSE_ID
+    result = execute_tool(
+        req.tool_name,
+        req.arguments,
+        greenhouse_id,
+        container.iot_by_greenhouse,
+        container.chat_agent.is_alerting,
+    )
+    return {"result": result}
 
 
 if __name__ == "__main__":

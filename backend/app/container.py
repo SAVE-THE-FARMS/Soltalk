@@ -13,6 +13,7 @@ from .services import (
     AlertService,
     ChatAgent,
     GreenhouseService,
+    RealtimeSessionService,
     SessionStore,
     TranscriptionService,
 )
@@ -49,6 +50,7 @@ class AppContainer:
             status_provider=self.greenhouse_service.get_dashboard,
         )
         self.transcription = TranscriptionService()
+        self.realtime_sessions = RealtimeSessionService()
 
     @property
     def chat_iot(self) -> IoTAdapter:
