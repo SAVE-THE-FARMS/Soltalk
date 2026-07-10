@@ -70,6 +70,17 @@ def test_read_data_returns_target_value():
     assert result["greenhouse_id"] == 1
 
 
+def test_query_data_is_an_alias_for_read_data():
+    """Realtime(음성) 프론트는 조회 도구를 "query_data"라는 이름으로 호출한다."""
+    adapter = MockIoTAdapter()
+
+    result = execute_tool("query_data", {"target": "temperature"}, 1, {1: adapter}, _always_normal)
+
+    assert result["ok"] is True
+    assert result["target"] == "temperature"
+    assert result["greenhouse_id"] == 1
+
+
 def test_unknown_tool_name_fails_gracefully():
     result = execute_tool("delete_everything", {}, 1, {1: MockIoTAdapter()}, _always_normal)
 

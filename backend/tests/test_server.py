@@ -273,6 +273,22 @@ def test_tools_execute_read_data_defaults_to_greenhouse_1():
     assert result["greenhouse_id"] == 1
 
 
+def test_tools_execute_query_data_is_accepted_as_alias_for_read_data():
+    """Realtime(음성) 프론트가 조회 도구를 "query_data"라는 이름으로 호출한다 — 백엔드가 받아줘야 함."""
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "query_data", "arguments": {"target": "temperature"}},
+    )
+
+    assert resp.status_code == 200
+    result = resp.json()["result"]
+    assert result["ok"] is True
+    assert result["greenhouse_id"] == 1
+
+
 def test_tools_execute_control_device_without_greenhouse_id_is_not_applied():
     _reset_all()
     client = TestClient(server.app)

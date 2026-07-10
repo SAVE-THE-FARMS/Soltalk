@@ -1,5 +1,8 @@
 """ChatAgent(텍스트 챗)와 Realtime tool 브릿지(/api/tools/execute)가 공유하는
 control_device / read_data 실행 로직. 이 함수 하나만 바꾸면 두 경로 모두에 반영된다.
+
+Realtime(음성) 프론트는 조회 도구를 "query_data"라는 이름으로 호출한다(텍스트 챗의
+OpenAI tool 스키마는 "read_data"). 두 이름 모두 같은 조회 로직을 타도록 받아준다.
 """
 
 from typing import Callable
@@ -36,6 +39,6 @@ def execute_tool(
         if result.get("ok") and was_alerting:
             result["note"] = ALERT_CLEARED_NOTE
         return result
-    if name == "read_data":
+    if name in ("read_data", "query_data"):
         return {**iot.read(args["target"]), "greenhouse_id": greenhouse_id}
     return {"ok": False, "reason": "unknown_tool"}

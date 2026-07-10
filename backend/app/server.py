@@ -175,7 +175,7 @@ def create_realtime_session():
 @app.post("/api/tools/execute")
 def execute_tool_endpoint(req: ToolExecuteRequest):
     greenhouse_id = req.arguments.get("greenhouse_id")
-    if req.tool_name == "read_data" and greenhouse_id is None:
+    if req.tool_name in ("read_data", "query_data") and greenhouse_id is None:
         greenhouse_id = ChatAgent.DEFAULT_GREENHOUSE_ID
     result = execute_tool(
         req.tool_name,
