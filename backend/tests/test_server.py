@@ -200,6 +200,111 @@ def test_alert_dismiss_on_unknown_alert_is_404():
     assert resp.status_code == 404
 
 
+def test_create_realtime_session_returns_client_secret(monkeypatch):
+    _reset_all()
+    monkeypatch.setattr(
+        server.container.realtime_session,
+        "create_session",
+        lambda: {"client_secret": "ek_abc123", "expires_at": 1234567890},
+    )
+    client = TestClient(server.app)
+
+    resp = client.post("/api/realtime/session")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"client_secret": "ek_abc123", "expires_at": 1234567890}
+
+
+def test_create_realtime_session_returns_502_on_failure(monkeypatch):
+    _reset_all()
+
+    def boom():
+        raise RuntimeError("openai down")
+
+    monkeypatch.setattr(server.container.realtime_session, "create_session", boom)
+    client = TestClient(server.app)
+
+    resp = client.post("/api/realtime/session")
+
+    assert resp.status_code == 502
+
+
+def test_execute_tool_control_device_updates_shared_state():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={
+            "tool_name": "control_device",
+            "arguments": {"device": "shade", "action": "close", "greenhouse_id": 1},
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["result"]["ok"] is True
+    # 음성 모드로 제어한 결과가 대시보드 조회(/api/state)에도 그대로 반영되어야 한다
+    assert client.get("/api/state").json()["greenhouses"][0]["devices"]["shade"] == "closed"
+
+
+def test_execute_tool_query_data_reads_target():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "query_data", "arguments": {"target": "alerts"}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["result"]["ok"] is True
+
+
+def test_execute_tool_unknown_tool_name_returns_ok_false():
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute", json={"tool_name": "delete_everything", "arguments": {}}
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == {"ok": False, "reason": "unknown_tool"}
+
+
+def test_execute_tool_malformed_control_arguments_do_not_500():
+    """음성 모델이 깨진/부분 인자를 보내도 500이 아니라 구조화된 실패로 응답해야
+    프론트가 그대로 모델에 돌려주고 AI가 말로 이어갈 수 있다."""
+    _reset_all()
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "control_device", "arguments": {"greenhouse_id": 1}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == {"ok": False, "reason": "invalid_arguments"}
+
+
+def test_execute_tool_internal_error_returns_structured_failure(monkeypatch):
+    _reset_all()
+
+    def boom(tool_name, args):
+        raise RuntimeError("adapter exploded")
+
+    monkeypatch.setattr(server.container.tool_executor, "execute", boom)
+    client = TestClient(server.app)
+
+    resp = client.post(
+        "/api/tools/execute",
+        json={"tool_name": "control_device", "arguments": {"device": "shade", "action": "close", "greenhouse_id": 1}},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == {"ok": False, "reason": "internal_error"}
+
+
 def test_reset_restores_device_state():
     _reset_all()
     server.container.chat_iot.control("shade", "close")
@@ -210,32 +315,6 @@ def test_reset_restores_device_state():
 
     assert resp.status_code == 200
     assert client.get("/api/state").json()["greenhouses"][0]["devices"]["shade"] == "open"
-
-
-def test_realtime_session_returns_client_secret(monkeypatch):
-    monkeypatch.setattr(
-        server.container.realtime_sessions,
-        "create_session",
-        lambda: {"client_secret": "ek_test", "expires_at": 1234567890},
-    )
-    client = TestClient(server.app)
-
-    resp = client.post("/api/realtime/session")
-
-    assert resp.status_code == 200
-    assert resp.json() == {"client_secret": "ek_test", "expires_at": 1234567890}
-
-
-def test_realtime_session_returns_502_when_openai_call_fails(monkeypatch):
-    def boom():
-        raise RuntimeError("openai down")
-
-    monkeypatch.setattr(server.container.realtime_sessions, "create_session", boom)
-    client = TestClient(server.app)
-
-    resp = client.post("/api/realtime/session")
-
-    assert resp.status_code == 502
 
 
 def test_tools_execute_runs_control_device():

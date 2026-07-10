@@ -23,8 +23,6 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.container import AppContainer  # noqa: E402  (위 sys.path 설정 이후에 import)
-from app.services.chat_agent import ChatAgent  # noqa: E402
-from app.services.tool_execution import execute_tool  # noqa: E402
 
 # env/ 폴더의 .env 로드  (OPENAI_API_KEY 등)
 load_dotenv(Path(__file__).resolve().parent.parent / "env" / ".env")
@@ -158,32 +156,35 @@ def reset_demo():
     return {"success": True}
 
 
-class ToolExecuteRequest(BaseModel):
-    tool_name: str
-    arguments: dict
-
-
 @app.post("/api/realtime/session")
 def create_realtime_session():
+    """실시간 음성 모드용 임시(ephemeral) 키 발급. OPENAI_API_KEY 자체는 절대 응답에 담지 않는다."""
     try:
-        return container.realtime_sessions.create_session()
+        return container.realtime_session.create_session()
     except Exception:
-        logger.exception("realtime session 발급 실패")
-        raise HTTPException(status_code=502, detail="음성 세션을 시작할 수 없어요.")
+        logger.exception("realtime 세션 발급 실패")
+        raise HTTPException(status_code=502, detail="음성 세션 발급에 실패했어요.")
+
+
+class ToolExecuteRequest(BaseModel):
+    tool_name: str  # "control_device" | "read_data" | "query_data"
+    arguments: dict = {}
 
 
 @app.post("/api/tools/execute")
-def execute_tool_endpoint(req: ToolExecuteRequest):
-    greenhouse_id = req.arguments.get("greenhouse_id")
-    if req.tool_name in ("read_data", "query_data") and greenhouse_id is None:
-        greenhouse_id = ChatAgent.DEFAULT_GREENHOUSE_ID
-    result = execute_tool(
-        req.tool_name,
-        req.arguments,
-        greenhouse_id,
-        container.iot_by_greenhouse,
-        container.chat_agent.is_alerting,
-    )
+def execute_tool(req: ToolExecuteRequest):
+    """실시간 음성 세션 중 모델이 요청한 function-call을 브라우저가 대신 실행시키는 브릿지.
+
+    /api/chat 의 ChatAgent와 같은 ToolExecutor 인스턴스를 쓰므로 온실 상태는 텍스트
+    채팅·음성·대시보드가 항상 공유한다(음성으로 제어한 결과가 대시보드에도 바로 반영됨).
+    """
+    try:
+        result = container.tool_executor.execute(req.tool_name, req.arguments)
+    except Exception:
+        # 500 대신 구조화된 실패로 응답 — 프론트가 이걸 function_call_output 으로 모델에
+        # 돌려줘서 AI가 "실패했어요"라고 말로 이어갈 수 있게 한다 (/api/chat 의 방침과 동일).
+        logger.exception("tool 실행 실패 — tool_name=%r", req.tool_name)
+        result = {"ok": False, "reason": "internal_error"}
     return {"result": result}
 
 

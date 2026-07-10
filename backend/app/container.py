@@ -15,6 +15,7 @@ from .services import (
     GreenhouseService,
     RealtimeSessionService,
     SessionStore,
+    ToolExecutor,
     TranscriptionService,
 )
 
@@ -44,13 +45,26 @@ class AppContainer:
         self.greenhouse_service = GreenhouseService(self.iot_by_greenhouse, GREENHOUSES, MOCK_DATA)
         self.alert_service = AlertService(self.greenhouse_service)
         self.sessions = SessionStore()
+        # 도구 실행기는 앱 전체에 딱 하나 — 텍스트 챗봇(ChatAgent)과 실시간 음성 모드
+        # (/api/tools/execute)가 같은 인스턴스를 공유한다. "state"/"alerts" target 조회용
+        # 서비스까지 여기서 전부 주입해두면 어느 경로로 호출해도 능력이 같다.
+        self.tool_executor = ToolExecutor(
+            self.iot_by_greenhouse,
+            self.greenhouse_service.get_dashboard,
+            greenhouse_service=self.greenhouse_service,
+            alert_service=self.alert_service,
+        )
         self.chat_agent = ChatAgent(
             iot_by_greenhouse=self.iot_by_greenhouse,
             greenhouse_names={gid: record["name"] for gid, record in GREENHOUSES.items()},
             status_provider=self.greenhouse_service.get_dashboard,
+            tool_executor=self.tool_executor,
         )
         self.transcription = TranscriptionService()
-        self.realtime_sessions = RealtimeSessionService()
+        self.realtime_session = RealtimeSessionService(
+            greenhouse_names={gid: record["name"] for gid, record in GREENHOUSES.items()},
+            status_provider=self.greenhouse_service.get_dashboard,
+        )
 
     @property
     def chat_iot(self) -> IoTAdapter:

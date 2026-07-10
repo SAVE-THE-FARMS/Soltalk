@@ -367,6 +367,29 @@ def test_system_prompt_describes_farm_layout():
     assert "2번 온실(딸기)" in system_prompt
 
 
+def test_system_prompt_includes_smart_judgment_rules():
+    """텍스트 챗봇도 음성과 같은 판단 규칙(작물 생리 근거 제안/만류)을 가져야 한다."""
+    captured = {}
+
+    class RecordingOpenAI(FakeOpenAI):
+        def _create(self, **kwargs):
+            captured["messages"] = kwargs["messages"]
+            return super()._create(**kwargs)
+
+    agent = ChatAgent(
+        iot_by_greenhouse={1: MockIoTAdapter()},
+        greenhouse_names=GREENHOUSE_NAMES,
+        status_provider=_all_normal_status,
+        client=RecordingOpenAI([_response(_message(content="안녕하세요!"))]),
+    )
+
+    agent.handle("안녕")
+
+    system_prompt = captured["messages"][0]["content"]
+    assert "일소" in system_prompt
+    assert "대안" in system_prompt
+
+
 def test_system_prompt_instructs_asking_back_when_greenhouse_unspecified():
     captured = {}
 

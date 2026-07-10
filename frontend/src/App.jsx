@@ -14,13 +14,13 @@ export default function App() {
   const hasInteractedRef = useRef(false);
   const farm = useFarmData();
 
-  // 대시보드를 보는 동안은 주기적으로 다시 불러와서, 조치 후 습도가 서서히
-  // 변하며 경고→정상으로 전환되는 걸 눈으로 볼 수 있게 한다.
+  // 어느 화면에서든 주기적으로 다시 불러온다. 알림 배지/배너/알림함은 채팅 탭에도
+  // 보이고, 채팅·음성으로 조치한 뒤에도 습도가 서서히(수 분에 걸쳐) 내려가며 경고가
+  // 해제되기 때문 — 대시보드에서만 폴링하면 채팅 화면의 경고가 낡은 채 안 사라진다(실측).
   useEffect(() => {
-    if (view !== "dashboard") return;
     const id = setInterval(farm.refresh, 3000);
     return () => clearInterval(id);
-  }, [view, farm.refresh]);
+  }, [farm.refresh]);
 
   const criticalNotifications = farm.notifications.filter((n) => n.level === "critical");
   const warningNotifications = farm.notifications.filter((n) => n.level === "warning");

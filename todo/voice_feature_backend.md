@@ -99,10 +99,10 @@ OPENAI_API_KEY=...      (신규, Realtime 세션 발급 서버측 전용)
 
 ## 7. 체크리스트 (백엔드)
 
-- [ ] OpenAI 계정/API 키 발급 및 결제수단 등록
-- [ ] `POST /api/realtime/session` 구현 (ephemeral key 발급)
-- [ ] `POST /api/tools/execute` 구현 (기존 tool 실행 로직 재사용)
-- [ ] Realtime API용 tool 스키마 별도 작성 (`realtime_tools_schema.py`)
-- [ ] farm_state 공유 구조 확인 (음성 제어 → 대시보드 즉시 반영)
-- [ ] 환경변수 2종 관리 (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
-- [ ] 텍스트 채팅 백업 경로 정상 동작 재확인
+- [x] OpenAI 계정/API 키 발급 및 결제수단 등록 — 기존 `OPENAI_API_KEY`로 실제 발급 성공 확인
+- [x] `POST /api/realtime/session` 구현 (ephemeral key 발급) — `RealtimeSessionService`
+- [x] `POST /api/tools/execute` 구현 (기존 tool 실행 로직 재사용) — `ToolExecutor` 공용화
+- [x] Realtime API용 tool 스키마 별도 작성 — 프론트 `frontend/src/realtime/realtimeTools.js`에 이미 있음
+- [x] farm_state 공유 구조 확인 (음성 제어 → 대시보드 즉시 반영) — `/api/tools/execute`로 제어 후 `/api/state`에 즉시 반영됨을 확인
+- [x] 환경변수 관리 — **정정**: 실제 구현은 텍스트 챗봇도 OpenAI(Claude 아님)를 쓰므로 `OPENAI_API_KEY` 하나만 필요. 문서 상단 2절의 "두 공급자 관리" 리스크는 이 프로젝트에는 해당 없음.
+- [x] 텍스트 채팅 백업 경로 정상 동작 재확인 — 기존 백엔드 테스트 92건 모두 통과 유지

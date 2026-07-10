@@ -1,18 +1,13 @@
 """LLM 에이전트 (OpenAI function calling).
 
-사용자 자연어 → LLM 이 control_device / read_data 도구를 호출 → 온실별 IoT 어댑터 실행 →
-자연어 응답. 의존성(온실별 IoT 어댑터, 온실 이름, 실시간 상태 조회 함수, OpenAI 클라이언트,
-모델명)은 생성자로 주입받는다.
+사용자 자연어 → LLM 이 control_device / read_data 도구를 호출 → 도구 실행 → 자연어 응답.
+이 모듈은 프롬프트 구성·도구 스키마·tool 왕복 루프만 담당하고, 도구의 실제 실행 규칙
+(greenhouse_id 필수/기본값, 경고 온실 안내 등)은 tool_executor.py 의 ToolExecutor 가
+단일 진실 공급원이다 — 실행 의미가 궁금하면 그쪽 문서를 볼 것.
 
 온실 지정: 도구 인자 greenhouse_id 로 대상 온실을 고른다. "딸기 온실"처럼 작물 이름으로
-말해도 시스템 프롬프트의 농장 구성 정보를 보고 모델이 번호로 매핑한다.
-
-- control_device 는 greenhouse_id 가 **필수**다 — 장비를 조작하는 명령인데 온실을
-  특정하지 않으면(예: "차광막 닫아줘") 함부로 아무 온실에나 적용하지 않고, 모델이
-  먼저 사용자에게 되묻게 한다 (프롬프트 지시 + 실제 상태를 근거로 확인 질문 생성).
-  이때 경고/위험 중인 온실이 있으면 그 온실을 근거로 확인하도록 상태를 프롬프트에 넣는다.
-- read_data 는 조회일 뿐 장비를 바꾸지 않아 위험이 낮으므로, 미지정 시 기존처럼
-  1번 온실을 기본값으로 조회한다.
+말해도 시스템 프롬프트의 농장 구성 정보를 보고 모델이 번호로 매핑한다. control_device 는
+스키마상 greenhouse_id 필수(미지정이면 모델이 되묻는다), read_data 는 미지정 시 기본 온실.
 
 handle() 반환 스키마 (smartfarm_api_spec.md 1.1 대응):
   {"reply": str,
@@ -26,7 +21,8 @@ from typing import Callable
 from openai import OpenAI
 
 from ..iot.base import IoTAdapter
-from .tool_execution import execute_tool
+from .persona import SMART_JUDGMENT_RULES
+from .tool_executor import ToolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +31,9 @@ _STATUS_LABEL = {"normal": "정상", "warning": "경고", "critical": "위험"}
 
 class ChatAgent:
     MODEL = "gpt-5.4-mini"  # function calling 지원, 저비용/저지연
-    DEFAULT_GREENHOUSE_ID = 1  # read_data 미지정 시에만 쓰는 기본 대상
+    # read_data 미지정 시 기본 대상 — 실제 기본값 적용은 ToolExecutor 가 하므로 상수도
+    # 거기 것을 참조한다 (두 곳에 각자 정의하면 한쪽만 바꿨을 때 조용히 어긋난다).
+    DEFAULT_GREENHOUSE_ID = ToolExecutor.DEFAULT_GREENHOUSE_ID
     MAX_TOOL_ITERATIONS = 5  # tool 왕복 상한 (무한 루프 방지)
 
     SYSTEM_PROMPT_INTRO = (
@@ -49,6 +47,8 @@ class ChatAgent:
         "장비를 조작한 뒤에는 몇 번 온실에 무엇을 했는지 확인해주는 문장으로 답하고, "
         "지원하지 않는 장비/동작이면 무엇이 안 되는지 안내하세요. "
         "도구 결과에 note 필드가 있으면 그 내용을 반드시 답변에 반영하세요.\n"
+        + SMART_JUDGMENT_RULES
+        + "\n"
     )
 
     # 온실을 지정하지 않은 장비 조작 요청일 때 쓸 규칙. {target_hint} 는 코드가
@@ -67,13 +67,17 @@ class ChatAgent:
         status_provider: Callable[[], list[dict]],
         client: OpenAI | None = None,
         model: str | None = None,
+        tool_executor: ToolExecutor | None = None,
     ):
-        self._iot_by_greenhouse = iot_by_greenhouse
         self._status_provider = status_provider
         self._client = client  # None 이면 최초 호출 때 lazy 생성 (import 시 API 키 불필요)
         self._model = model or self.MODEL
         self._farm_layout_prompt = self._build_farm_layout_prompt(greenhouse_names)
         self._tools = self._build_tools(greenhouse_names)
+        # 실행 로직은 ToolExecutor 하나로 통일 — 운영에서는 container 가 만든 실행기 하나를
+        # 실시간 음성 모드(/api/tools/execute)와 공유하도록 주입한다. 미주입 시(테스트 등)
+        # 최소 구성으로 자체 생성.
+        self._tool_executor = tool_executor or ToolExecutor(iot_by_greenhouse, status_provider)
 
     def _current_system_prompt(self) -> str:
         status = self._status_provider()
@@ -251,24 +255,15 @@ class ChatAgent:
             logger.warning("tool 인자 JSON 파싱 실패: %r", tool_call.function.arguments)
             return {"ok": False, "reason": "invalid_arguments"}
 
-        greenhouse_id = args.get("greenhouse_id")
-        if greenhouse_id is None and name == "read_data":
-            # read_data 는 위험이 낮으므로 미지정 시 기본 온실로 조회 (하위 호환)
-            greenhouse_id = self.DEFAULT_GREENHOUSE_ID
-        result = execute_tool(name, args, greenhouse_id, self._iot_by_greenhouse, self.is_alerting)
+        result = self._tool_executor.execute(name, args)
 
         if name == "control_device":
             actions_taken.append(
                 {
                     "device": args.get("device"),
-                    "greenhouse_id": greenhouse_id,
+                    "greenhouse_id": args.get("greenhouse_id"),
                     "action": args.get("action"),
                     "success": result.get("ok", False),
                 }
             )
         return result
-
-    def is_alerting(self, greenhouse_id: int) -> bool:
-        return any(
-            s["id"] == greenhouse_id and s["status"] != "normal" for s in self._status_provider()
-        )

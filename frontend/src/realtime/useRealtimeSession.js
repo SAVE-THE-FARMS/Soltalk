@@ -2,11 +2,14 @@
 //
 // 책임: 연결 생명주기(연결/재연결 1회/종료) 관리, data channel 이벤트 해석,
 // function-call → 백엔드 중계 → 결과 재주입, 자막을 채팅 히스토리 콜백으로 전달.
-// WebRTC 저수준 연결은 realtimeClient.js, tool 스키마는 realtimeTools.js 가 담당.
+// WebRTC 저수준 연결은 realtimeClient.js 가 담당.
+// 지침/도구(tool) 스키마는 백엔드가 임시 키 발급 시점에 세션에 바인딩한다
+// (backend/app/services/realtime_session.py) — 여기서 session.update 로 보내지 않는다.
+// 과거에 프론트에서 보내던 session.update 는 payload 형식 문제(session.type 누락)로
+// OpenAI가 조용히 거부해서 "도구 없는 일반 챗봇"이 되는 사고가 있었다(실측).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { executeRealtimeTool } from "../api";
 import { connectRealtime, RealtimeConnectionError } from "./realtimeClient";
-import { REALTIME_TOOLS, VOICE_SESSION_INSTRUCTIONS } from "./realtimeTools";
 
 export const VOICE_STATUS = {
   IDLE: "idle", // 연결 대기
@@ -255,14 +258,7 @@ export function useRealtimeSession({ onUserMessage, onAssistantMessage } = {}) {
         }
         connectionRef.current = connection;
         connection.setMuted(mutedRef.current);
-        connection.sendEvent({
-          type: "session.update",
-          session: {
-            instructions: VOICE_SESSION_INSTRUCTIONS,
-            tools: REALTIME_TOOLS,
-            tool_choice: "auto",
-          },
-        });
+        // 지침/도구는 백엔드가 발급한 임시 키에 이미 바인딩되어 있음 — 추가 설정 불필요.
         reconnectAttemptedRef.current = false;
         setStatus(VOICE_STATUS.LISTENING);
       } catch (err) {
